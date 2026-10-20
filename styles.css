@@ -1289,6 +1289,24 @@ dialog::backdrop { background: var(--backdrop); }
 .gp-rate__buttons button[aria-pressed="true"] { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
 .gp-rate__status { margin: 0; min-height: 1.2em; }
 .gp-rate__status:empty { display: none; }
+/* The review form (REVIEWS_ON): the score buttons above, then the review and Submit. */
+.gp-review { gap: 10px; }
+.gp-review__title { margin: 0; font-weight: 600; overflow-wrap: anywhere; }
+.gp-review .gp-k { margin-top: 4px; }
+.gp-review textarea {
+  width: 100%; min-height: 120px;
+  padding: 10px 12px;
+  border: 1px solid var(--line); border-radius: 8px;
+  background: var(--bg); color: var(--fg);
+  font: inherit; line-height: 1.5;
+  resize: vertical;
+}
+.gp-review textarea::placeholder { color: var(--muted); }
+.gp-review textarea:focus-visible { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: 1px; }
+.gp-review__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 16px; }
+.gp-review .btn:disabled { opacity: 0.55; filter: none; cursor: not-allowed; }
+.gp-review__who { margin: 0; }
+.gp-review__signout { padding: 0; border: 0; background: none; color: var(--accent); font: inherit; text-decoration: underline; cursor: pointer; }
 
 /* ── Small screens ────────────────────────────────────── */
 

@@ -57,6 +57,30 @@ Put the Worker's address in `MAIL_API` near the top of `tools/build_pages.py`, t
 2. On GitHub, open **Actions → Sunday newsletter → Run workflow**, put your address under "Send one test copy", and run it. It sends this week's newsletter to you only, marked [Test].
 3. Follow a project you know updates often. **Actions → Update alerts** runs every hour; its first check of a project only notes the current release, and the next new release emails you.
 
+## Review sign-in
+
+Game pages can take Steam-style reviews: pick a score, write at least 20 characters, press **Submit review**. The first time, the visitor signs in with GitHub through this Worker, and the review is posted as their own comment in the project's thread (the same one giscus shows), starting with `Score: N/10`, so `tools/track_ratings.py` counts it as before. The Worker also starts a project's thread the first time someone reviews it, since only you and apps can start threads in the category. It needs a GitHub App of your own, made once:
+
+1. On GitHub, open **Settings → Developer settings → GitHub Apps → New GitHub App** and fill in:
+   - **GitHub App name**: anything free, like `Recomp Haven Reviews`. Reviewers see it when they sign in.
+   - **Homepage URL**: `https://recomphaven.com`
+   - **Callback URL**: `https://recomphaven-mail.intooblivion-riku.workers.dev/auth/callback`
+   - Leave **Expire user authorization tokens** ticked, and **Request user authorization (OAuth) during installation** and **Enable Device Flow** unticked.
+   - **Webhook**: untick **Active**.
+   - **Permissions → Repository permissions → Discussions**: **Read and write**. Leave everything else at No access.
+   - **Where can this GitHub App be installed?**: **Only on this account**.
+2. Press **Create GitHub App**. On the page that opens, copy the **Client ID**, press **Generate a new client secret** and copy the secret (GitHub shows it once), then scroll down and press **Generate a private key**, which downloads a `.pem` file.
+3. In the app's menu on the left, open **Install App**, install it on your account, and pick **Only select repositories → recomphaven**.
+4. In Cloudflare, open the Worker's **Settings → Variables and Secrets** and add:
+   - `GH_CLIENT_ID` (plain text): the Client ID.
+   - `GH_CLIENT_SECRET` (secret): the client secret.
+   - `GH_PRIVATE_KEY` (secret): open the `.pem` file in Notepad and paste all of it, the `BEGIN` and `END` lines too. Then delete the file, or keep it somewhere private.
+5. Paste the current `newsletter/worker.js` over the Worker's code and **Deploy** (see Updating the Worker below).
+6. Set `REVIEWS_ON = True` near the top of `tools/build_pages.py`, then commit and push. The next deploy puts the form on every game page.
+7. Try it: review a game, check the comment shows up under the game and in the repo's Discussions tab, then delete the comment on GitHub. Delete only the comment, not the whole discussion: the Worker remembers each project's thread. Ask someone with another GitHub account to try one too. If GitHub shows them an error instead of the sign-in page, change step 1's **Where can this GitHub App be installed?** to **Any account**; it still only works on this repo.
+
+Sign-ins last 8 hours and are kept in the visitor's browser. The token can only read and write discussions on repos where the app is installed, which is only this one, and anyone can revoke it at [github.com/settings/apps/authorizations](https://github.com/settings/apps/authorizations). Each GitHub account can submit up to 30 reviews a day. To remove a review, hide or delete the comment on GitHub, as before.
+
 ## Limits
 
 Resend's free plan sends 100 emails a day and 3,000 a month. The Worker counts every email and stops at `DAILY_LIMIT` (100 unless you set it), so a Sunday newsletter to more than about 90 people would stop part way. Confirmation emails are capped at `CONFIRM_LIMIT` (40) a day, so a burst of sign-ups can't use up the day. When the list grows, move Resend to a paid plan and add `DAILY_LIMIT` as a plain-text variable on the Worker with the new limit.

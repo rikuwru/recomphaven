@@ -53,6 +53,12 @@ SITE = 'https://recomphaven.com'
 GISCUS = {'repo': 'rikuwru/recomphaven', 'repo_id': 'R_kgDOVMUa9g',
           'category': 'Ratings and comments', 'category_id': 'DIC_kwDOVMUa9s4DIxXc'}
 COMMENTS_ON = bool(GISCUS['repo_id'] and GISCUS['category_id'])
+# Steam-style reviews above the comments: a score, a written review and a Submit button, posted to the
+# project's thread as the reviewer, after a GitHub sign-in through the newsletter Worker. Leave it off
+# until the GitHub App is set up (newsletter/README.md: "Review sign-in"). RH_REVIEWS=1 turns it on
+# for a local build.
+REVIEWS_ON = False or os.environ.get('RH_REVIEWS') == '1'
+REVIEW_MIN = 20  # the shortest review, in characters
 # GoatCounter site code (the "recomphaven" in recomphaven.goatcounter.com), or '' for no
 # visit counting. It counts the visits that rank Trending; see tools/track_visits.py.
 GOATCOUNTER = 'recomphaven'
@@ -456,34 +462,60 @@ def page(game, share_url, snapshot):
 
 
 def comments_html(game):
-    """Ratings and comments: a giscus thread per project (term = the project's id), a switcher
-    when the game has several projects, and a 1 to 10 picker that copies "Score: N/10" for the
-    comment box. game.js drives the switcher, the picker and the theme."""
+    """Ratings and comments: a giscus thread per project (term = the project's id) and a switcher
+    when the game has several projects. Above the thread, a review form (a score, a review and
+    Submit) when REVIEWS_ON, or else a 1 to 10 picker that copies "Score: N/10" for the comment
+    box. game.js drives the switcher, the form or picker, and the theme."""
     if not COMMENTS_ON:
         return ''
     es, pick = game['entries'], game['pick']
+    names = [e['project'] for e in es]
+
+    def label(e):  # two projects with the same name get their team added
+        team = e.get('team')
+        return f'{e["project"]} ({team})' if names.count(e['project']) > 1 and team else e['project']
     tabs = ''
     if len(es) > 1:
-        names = [e['project'] for e in es]
-
-        def label(e):  # two projects with the same name get their team added
-            team = e.get('team')
-            return f'{e["project"]} ({team})' if names.count(e['project']) > 1 and team else e['project']
         tabs = ('\n    <div class="gp-tabs" role="tablist" aria-label="Which project">'
                 + ''.join(f'<button type="button" role="tab" aria-selected="{"true" if e is pick else "false"}" '
                           f'data-term="{esc(e["id"])}">{esc(label(e))}</button>' for e in es)
                 + '</div>')
-    scores = ''.join(f'<button type="button" data-score="{n}">{n}</button>' for n in range(1, 11))
-    g = GISCUS
-    return f'''
-  <section class="gp-comments" id="comments" aria-labelledby="comments-title">
-    <h2 class="gp-h2" id="comments-title">Ratings and comments</h2>
-    <p class="gp-comments__intro">Sign in with GitHub to comment or reply. To rate {'a project' if len(es) > 1 else 'it'}, start your comment with a score out of 10: pick one below to copy it, then paste it into the comment box. Each person's latest score counts towards the User score, which updates once a day.</p>{tabs}
+    scores = ''.join(f'<button type="button" data-score="{n}" aria-pressed="false">{n}</button>' for n in range(1, 11))
+    it = 'a project' if len(es) > 1 else 'it'
+    if REVIEWS_ON and MAIL_API:
+        intro = (f'To rate {it}, pick a score out of 10, write a few words about how it plays and press Submit. '
+                 'The first time, you’ll sign in with GitHub. Each person’s latest score counts towards the User '
+                 'score, which updates once a day. To comment or reply without a score, use the box under the reviews.')
+        rate = f'''
+    <form class="gp-rate gp-review" data-review-form data-api="{esc(MAIL_API)}" data-term="{esc(pick['id'])}" data-min="{REVIEW_MIN}" novalidate>
+      <p class="gp-review__title">Review <strong data-review-name>{esc(label(pick))}</strong></p>
+      <span class="gp-k" id="rate-label">Your score</span>
+      <div class="gp-rate__buttons" role="group" aria-labelledby="rate-label">{scores}</div>
+      <label class="gp-k" for="review-text">Your review</label>
+      <textarea id="review-text" name="review" rows="5" maxlength="5000" aria-describedby="review-count"
+        placeholder="What works, what doesn’t, what you played it on…"></textarea>
+      <div class="gp-review__foot">
+        <span class="gp-review__count small muted" id="review-count">At least {REVIEW_MIN} characters</span>
+        <button class="btn" type="submit" disabled>Submit review</button>
+      </div>
+      <p class="gp-review__who small muted" hidden>Signed in as <strong></strong> · <button type="button" class="gp-review__signout" data-review-signout>Sign out</button></p>
+      <p class="mail-form__status gp-review__status" aria-live="polite"></p>
+    </form>'''
+    else:
+        intro = (f'Sign in with GitHub to comment or reply. To rate {it}, start your comment with a score out of 10: '
+                 "pick one below to copy it, then paste it into the comment box. Each person's latest score counts "
+                 'towards the User score, which updates once a day.')
+        rate = f'''
     <div class="gp-rate">
       <span class="gp-k" id="rate-label">Your score</span>
       <div class="gp-rate__buttons" role="group" aria-labelledby="rate-label">{scores}</div>
       <p class="gp-rate__status small muted" aria-live="polite"></p>
-    </div>
+    </div>'''
+    g = GISCUS
+    return f'''
+  <section class="gp-comments" id="comments" aria-labelledby="comments-title">
+    <h2 class="gp-h2" id="comments-title">Ratings and comments</h2>
+    <p class="gp-comments__intro">{intro}</p>{tabs}{rate}
     <div class="giscus"></div>
     <script src="https://giscus.app/client.js" data-repo="{g['repo']}" data-repo-id="{g['repo_id']}"
       data-category="{esc(g['category'])}" data-category-id="{g['category_id']}" data-mapping="specific"

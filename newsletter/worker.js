@@ -16,6 +16,15 @@
 //   CONFIRM_LIMIT   optional: most confirmation emails in a UTC day, default 40
 //   ALLOWED_ORIGINS optional: comma-separated sites that may post sign-ups,
 //                   default https://recomphaven.com
+//
+// Reviews on game pages (score, written review, Submit) also go through this Worker: it signs
+// people in with a GitHub App and starts a project's discussion thread the first time it's
+// reviewed. Setup: newsletter/README.md, "Review sign-in". Settings:
+//   GH_CLIENT_ID     the GitHub App's client ID
+//   GH_CLIENT_SECRET secret: one of the App's client secrets
+//   GH_PRIVATE_KEY   secret: the App's private key, the whole .pem file
+//   GH_REPO          optional: default rikuwru/recomphaven
+//   GH_CATEGORY      optional: default "Ratings and comments"
 
 const SITE = 'https://recomphaven.com';
 const RESEND = 'https://api.resend.com';
@@ -70,6 +79,9 @@ async function route(request, env) {
   if (path === '/confirm' && method === 'GET') return confirm(url, env);
   if (path === '/manage') return method === 'POST' ? manageAction(request, url, env) : managePage(url, env);
   if (path === '/unsubscribe') return method === 'POST' ? unsubscribeAction(url, env) : unsubscribePage(url, env);
+  if (path === '/auth/start' && method === 'GET') return authStart(url, env);
+  if (path === '/auth/callback' && method === 'GET') return authCallback(url, env);
+  if (path === '/reviews/thread' && method === 'POST') return reviewThread(request, env);
   if (path.startsWith('/admin/')) {
     if (!isAdmin(request, env)) return json({ ok: false, message: 'Not allowed.' }, 401);
     if (path === '/admin/stats' && method === 'GET') return stats(env);
@@ -109,14 +121,15 @@ function json(body, status = 200, headers = {}) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json; charset=utf-8', ...headers } });
 }
 
+const siteOrigins = (env) => (env.ALLOWED_ORIGINS || SITE).split(',').map((s) => s.trim()).filter(Boolean);
+
 function cors(request, env) {
   const origin = request.headers.get('Origin') || '';
-  const allowed = (env.ALLOWED_ORIGINS || SITE).split(',').map((s) => s.trim()).filter(Boolean);
-  if (!allowed.includes(origin)) return {};
+  if (!siteOrigins(env).includes(origin)) return {};
   return {
     'Access-Control-Allow-Origin': origin,
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
     Vary: 'Origin',
   };
@@ -567,4 +580,192 @@ async function putState(request, env) {
   await run(env, 'INSERT INTO state (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
     String(key), JSON.stringify(value ?? null));
   return json({ ok: true });
+}
+
+// ── Reviews: GitHub sign-in and threads for game-page reviews ────
+//
+// A review is posted by the reviewer's own browser, as their own comment in the project's
+// thread (the same GitHub Discussion giscus shows), with a user token of the GitHub App. This
+// Worker only does the two things a browser can't:
+//   /auth/start, /auth/callback  sign the person in (the App's client secret stays here) and
+//                                send them back to the game page with the token in the URL's
+//                                fragment, which the page reads and removes at once
+//   /reviews/thread              finds the project's thread, or starts it as the App: the
+//                                category takes new discussions only from maintainers and apps
+// tools/track_ratings.py reads the scores from the thread every night, as before.
+
+const GH_API = 'https://api.github.com';
+const GH_REPO = 'rikuwru/recomphaven';
+const GH_CATEGORY = 'Ratings and comments';
+const GH_HEADERS = { Accept: 'application/vnd.github+json', 'User-Agent': 'recomphaven-worker' };
+const REVIEWS_PER_DAY = 30;  // thread lookups a day for one GitHub account
+let appToken = { token: null, until: 0 };
+let repoIds = null;
+
+const repoName = (env) => env.GH_REPO || GH_REPO;
+const b64url = (bytes) => btoa(String.fromCharCode(...new Uint8Array(bytes))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+const b64urlText = (s) => b64url(new TextEncoder().encode(s));
+const fromB64url = (s) => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0)));
+
+async function hmac(secret, text) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+  return b64url(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(text)));
+}
+
+async function sha1(text) {
+  const d = await crypto.subtle.digest('SHA-1', new TextEncoder().encode(text));
+  return [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Where a reviewer may be sent back to: a page on one of the site's own origins.
+function returnUrl(env, raw) {
+  try {
+    const u = new URL(raw);
+    return siteOrigins(env).includes(u.origin) ? `${u.origin}${u.pathname}${u.search}` : null;
+  } catch {
+    return null;
+  }
+}
+
+async function authStart(url, env) {
+  if (!env.GH_CLIENT_ID || !env.GH_CLIENT_SECRET) return new Response('Reviews aren’t set up yet.', { status: 503 });
+  const back = returnUrl(env, url.searchParams.get('return') || SITE);
+  if (!back) return new Response('Unknown site.', { status: 400 });
+  const body = b64urlText(JSON.stringify({ r: back, t: Date.now(), n: randomToken(9) }));
+  const state = `${body}.${await hmac(env.GH_CLIENT_SECRET, body)}`;
+  const q = new URLSearchParams({ client_id: env.GH_CLIENT_ID, redirect_uri: `${url.origin}/auth/callback`, state });
+  return Response.redirect(`https://github.com/login/oauth/authorize?${q}`, 302);
+}
+
+async function authCallback(url, env) {
+  const [body, sig] = (url.searchParams.get('state') || '').split('.');
+  let state = null;
+  if (body && sig && env.GH_CLIENT_SECRET && sig === await hmac(env.GH_CLIENT_SECRET, body)) {
+    try { state = JSON.parse(fromB64url(body)); } catch { state = null; }
+  }
+  const back = state && Date.now() - state.t < 15 * 60 * 1000 ? returnUrl(env, state.r) : null;
+  if (!back) {
+    return new Response('This sign-in link has expired. Go back to the game page and press Submit again.',
+      { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
+  }
+  let result = { error: url.searchParams.get('error') || 'cancelled' };
+  const code = url.searchParams.get('code');
+  if (code) {
+    const res = await fetch('https://github.com/login/oauth/access_token', {
+      method: 'POST',
+      headers: { ...GH_HEADERS, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ client_id: env.GH_CLIENT_ID, client_secret: env.GH_CLIENT_SECRET, code,
+        redirect_uri: `${url.origin}/auth/callback` }),
+    });
+    const out = await res.json().catch(() => ({}));
+    const user = out.access_token ? await ghUser(out.access_token) : null;
+    result = user
+      ? { token: out.access_token, login: user.login, expires: out.expires_in ? Date.now() + (out.expires_in - 120) * 1000 : null }
+      : { error: out.error || 'failed' };
+  }
+  return new Response(null, {
+    status: 302,
+    headers: { Location: `${back}#rh-github=${b64urlText(JSON.stringify(result))}`, 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' },
+  });
+}
+
+async function ghUser(token) {
+  if (!token) return null;
+  const res = await fetch(`${GH_API}/user`, { headers: { ...GH_HEADERS, Authorization: `Bearer ${token}` } });
+  return res.ok ? res.json() : null;
+}
+
+// The App's private key, as WebCrypto wants it. GitHub hands out PKCS#1 ("BEGIN RSA PRIVATE KEY"),
+// which gets the PKCS#8 wrapper here; a PKCS#8 key ("BEGIN PRIVATE KEY") is used as it is.
+function pkcs8(pem) {
+  const text = String(pem || '').replace(/\\n/g, '\n');
+  const der = Uint8Array.from(atob(text.replace(/-----[^-]+-----/g, '').replace(/\s+/g, '')), (c) => c.charCodeAt(0));
+  if (!/BEGIN RSA PRIVATE KEY/.test(text)) return der;
+  const len = (n) => (n < 128 ? [n] : n < 256 ? [0x81, n] : [0x82, n >> 8, n & 255]);
+  const algorithm = [0x30, 0x0d, 0x06, 0x09, 0x2a, 0x86, 0x48, 0x86, 0xf7, 0x0d, 0x01, 0x01, 0x01, 0x05, 0x00];
+  const inner = [0x02, 0x01, 0x00, ...algorithm, 0x04, ...len(der.length)];
+  return new Uint8Array([0x30, ...len(inner.length + der.length), ...inner, ...der]);
+}
+
+async function appJwt(env) {
+  const key = await crypto.subtle.importKey('pkcs8', pkcs8(env.GH_PRIVATE_KEY), { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+  const t = Math.floor(Date.now() / 1000);
+  const head = b64urlText(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
+  const claims = b64urlText(JSON.stringify({ iat: t - 60, exp: t + 540, iss: String(env.GH_CLIENT_ID) }));
+  const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode(`${head}.${claims}`));
+  return `${head}.${claims}.${b64url(sig)}`;
+}
+
+// A token for the App itself on the repo, kept until five minutes before it expires.
+async function installToken(env) {
+  if (appToken.token && Date.now() < appToken.until) return appToken.token;
+  const headers = { ...GH_HEADERS, Authorization: `Bearer ${await appJwt(env)}` };
+  const inst = await fetch(`${GH_API}/repos/${repoName(env)}/installation`, { headers });
+  if (!inst.ok) throw new Error(`GitHub App installation on ${repoName(env)}: HTTP ${inst.status}`);
+  const res = await fetch(`${GH_API}/app/installations/${(await inst.json()).id}/access_tokens`, { method: 'POST', headers });
+  if (!res.ok) throw new Error(`GitHub App token: HTTP ${res.status}`);
+  const out = await res.json();
+  appToken = { token: out.token, until: Date.parse(out.expires_at) - 5 * 60 * 1000 };
+  return out.token;
+}
+
+async function gql(token, query, variables) {
+  const res = await fetch(`${GH_API}/graphql`, {
+    method: 'POST',
+    headers: { ...GH_HEADERS, Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+  });
+  const out = await res.json().catch(() => ({}));
+  if (!res.ok || out.errors) throw new Error(`GitHub GraphQL: HTTP ${res.status} ${JSON.stringify(out.errors || out).slice(0, 300)}`);
+  return out.data;
+}
+
+async function repoAndCategory(env, token) {
+  if (repoIds) return repoIds;
+  const [owner, name] = repoName(env).split('/');
+  const d = await gql(token, `query($o: String!, $n: String!) {
+    repository(owner: $o, name: $n) { id discussionCategories(first: 50) { nodes { id name } } } }`, { o: owner, n: name });
+  const category = d.repository.discussionCategories.nodes.find((c) => c.name === (env.GH_CATEGORY || GH_CATEGORY));
+  if (!category) throw new Error(`No "${env.GH_CATEGORY || GH_CATEGORY}" discussion category on ${repoName(env)}`);
+  repoIds = { repo: d.repository.id, category: category.id };
+  return repoIds;
+}
+
+// POST /reviews/thread {term}, with the reviewer's token: the id of the project's discussion,
+// started first if nobody has reviewed or commented on the project yet. Its title is the
+// project's id and its body carries the term's SHA-1, the way giscus starts and finds threads
+// in strict mode, so giscus shows the same thread on the game page.
+async function reviewThread(request, env) {
+  const headers = cors(request, env);
+  if (!env.GH_CLIENT_ID || !env.GH_PRIVATE_KEY) return json({ ok: false, message: 'Reviews aren’t set up yet.' }, 503, headers);
+  const user = await ghUser((request.headers.get('Authorization') || '').replace(/^Bearer\s+/i, ''));
+  if (!user) return json({ ok: false, signIn: true, message: 'Please sign in with GitHub again.' }, 401, headers);
+  const { term } = await request.json().catch(() => ({}));
+  const project = (await recomps()).get(String(term || ''));
+  if (!project) return json({ ok: false, message: 'That project isn’t on the site.' }, 400, headers);
+  const kind = 'review:' + (await sha256(`${user.id}|${env.ADMIN_TOKEN || ''}`)).slice(0, 24);
+  if (await used(env, kind) >= REVIEWS_PER_DAY) {
+    return json({ ok: false, message: 'That’s a lot of reviews for one day. Please try again tomorrow.' }, 429, headers);
+  }
+  await bump(env, kind);
+
+  const key = `thread:${term}`;
+  const saved = await one(env, 'SELECT value FROM state WHERE key = ?', key);
+  if (saved) return json({ ok: true, discussion: JSON.parse(saved.value) }, 200, headers);
+
+  const token = await installToken(env);
+  const hash = await sha1(term);
+  const found = await gql(token, `query($q: String!) {
+    search(type: DISCUSSION, query: $q, first: 10) { nodes { ... on Discussion { id title body } } } }`,
+    { q: `repo:${repoName(env)} "${hash}" in:body` });
+  let id = (found.search.nodes.find((d) => d && d.title === term && d.body.includes(hash)) || {}).id;
+  if (!id) {
+    const ids = await repoAndCategory(env, token);
+    const made = await gql(token, `mutation($r: ID!, $c: ID!, $t: String!, $b: String!) {
+      createDiscussion(input: { repositoryId: $r, categoryId: $c, title: $t, body: $b }) { discussion { id } } }`,
+      { r: ids.repo, c: ids.category, t: term, b: `# ${term}\n\n${SITE}/games/${project.slug}/\n\n<!-- sha1: ${hash} -->` });
+    id = made.createDiscussion.discussion.id;
+  }
+  await run(env, 'INSERT INTO state (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value', key, JSON.stringify(id));
+  return json({ ok: true, discussion: id }, 200, headers);
 }

@@ -24,28 +24,36 @@
 
   // ── Ratings and comments (giscus, see comments_html() in tools/build_pages.py) ──
 
+  // Settings for giscus before it has loaded wait for it.
+  let ready = false;
+  const pending = {};
   function giscus(config) {
     const frame = document.querySelector('iframe.giscus-frame');
-    if (frame) frame.contentWindow.postMessage({ giscus: { setConfig: config } }, 'https://giscus.app');
+    if (ready && frame) frame.contentWindow.postMessage({ giscus: { setConfig: config } }, 'https://giscus.app');
+    else Object.assign(pending, config);
   }
 
-  // giscus starts in the system's light or dark; match a theme picked with the toggle.
-  let themed = false;
+  // giscus starts in the system's light or dark, on the page's pick; once it's up, match a theme
+  // picked with the toggle and a project picked before it loaded.
   window.addEventListener('message', (ev) => {
-    if (ev.origin !== 'https://giscus.app' || themed) return;
-    themed = true;
-    if (root.dataset.theme) giscus({ theme: isDark() ? 'dark' : 'light' });
+    if (ev.origin !== 'https://giscus.app' || ready) return;
+    ready = true;
+    if (root.dataset.theme) pending.theme = isDark() ? 'dark' : 'light';
+    if (Object.keys(pending).length) giscus(pending);
   });
 
   const comments = document.getElementById('comments');
   if (comments) {
     const status = comments.querySelector('.gp-rate__status');
     const tabs = [...comments.querySelectorAll('.gp-tabs [data-term]')];
+    const form = comments.querySelector('form[data-review-form]');
+    let review = null;
 
     const showProject = (term) => {
       tabs.forEach((t) => t.setAttribute('aria-selected', String(t.dataset.term === term)));
       giscus({ term });
-      status.textContent = '';
+      if (review) review.show(term);
+      else if (status) status.textContent = '';
     };
     tabs.forEach((t) => t.addEventListener('click', () => showProject(t.dataset.term)));
 
@@ -55,7 +63,8 @@
       if (link && tabs.length) showProject(link.dataset.rate);
     });
 
-    comments.querySelector('.gp-rate__buttons').addEventListener('click', async (ev) => {
+    if (form) review = reviewForm(form, tabs, showProject);
+    else comments.querySelector('.gp-rate__buttons').addEventListener('click', async (ev) => {
       const b = ev.target.closest('button[data-score]');
       if (!b) return;
       const text = `Score: ${b.dataset.score}/10`;
@@ -67,6 +76,181 @@
         status.textContent = `Start your comment below with "${text}", then add your thoughts and post.`;
       }
     });
+  }
+
+  // Reviews (REVIEWS_ON in tools/build_pages.py): a score, a written review and Submit. The first
+  // Submit signs the person in with GitHub through the Worker in data-api (/auth/start), which
+  // sends them back here with a token in the URL's fragment; the review waits in sessionStorage
+  // meanwhile and goes out on the way back. The Worker finds or starts the project's thread
+  // (/reviews/thread), and the review is posted to it from here as the reviewer's own comment,
+  // "Score: N/10" first, which is what tools/track_ratings.py reads.
+  function reviewForm(form, tabs, showProject) {
+    const API = form.dataset.api.replace(/\/+$/, '');
+    const MIN = Number(form.dataset.min) || 20;
+    const SESSION = 'rh-github', DRAFT = 'rh-review-draft';
+    const text = form.querySelector('textarea');
+    const submit = form.querySelector('button[type="submit"]');
+    const count = form.querySelector('.gp-review__count');
+    const who = form.querySelector('.gp-review__who');
+    const status = form.querySelector('.gp-review__status');
+    const scores = [...form.querySelectorAll('button[data-score]')];
+    const terms = tabs.length ? tabs.map((t) => t.dataset.term) : [form.dataset.term];
+    let term = (tabs.find((t) => t.getAttribute('aria-selected') === 'true') || form).dataset.term;
+    let score = 0, busy = false;
+
+    const keep = {
+      get(area, key) { try { return JSON.parse(window[area].getItem(key) || 'null'); } catch { return null; } },
+      set(area, key, value) {
+        try {
+          if (value == null) window[area].removeItem(key);
+          else window[area].setItem(key, JSON.stringify(value));
+        } catch { /* storage unavailable */ }
+      },
+    };
+    const session = () => {
+      const s = keep.get('localStorage', SESSION);
+      return s && s.token && (!s.expires || s.expires > Date.now()) ? s : null;
+    };
+    const say = (message, state = '', link = null) => {
+      status.dataset.state = state;
+      status.textContent = message;
+      if (link) {
+        const a = Object.assign(document.createElement('a'), { href: link, target: '_blank', rel: 'noopener', textContent: 'See it on GitHub ↗' });
+        status.append(' ', a);
+      }
+    };
+
+    const update = () => {
+      const left = MIN - text.value.trim().length;
+      const needs = [!score && 'Pick a score', left > 0 && `${left} more character${left === 1 ? '' : 's'}`].filter(Boolean);
+      count.textContent = needs.length ? needs.join(' · ') : `${text.value.trim().length} characters`;
+      submit.disabled = busy || needs.length > 0;
+      const s = session();
+      who.hidden = !s;
+      if (s) who.querySelector('strong').textContent = `@${s.login}`;
+    };
+    const setScore = (n) => {
+      score = n;
+      scores.forEach((b) => b.setAttribute('aria-pressed', String(Number(b.dataset.score) === n)));
+      update();
+    };
+    const show = (t) => {
+      term = t;
+      const tab = tabs.find((x) => x.dataset.term === t);
+      if (tab) form.querySelector('[data-review-name]').textContent = tab.textContent;
+      if (!busy) say('');
+    };
+    const restore = (draft) => {
+      if (draft.term !== term) {
+        showProject(draft.term);
+        show(draft.term);
+      }
+      text.value = draft.review || '';
+      setScore(Number(draft.score) || 0);
+    };
+
+    function signIn(draft, again) {
+      keep.set('localStorage', SESSION, null);
+      keep.set('sessionStorage', DRAFT, draft);
+      say(again ? 'Your GitHub sign-in has run out. Taking you to GitHub to sign in again…' : 'Taking you to GitHub to sign in…');
+      location.assign(`${API}/auth/start?return=${encodeURIComponent(location.href.split('#')[0])}`);
+    }
+
+    async function send() {
+      const draft = { term, score, review: text.value.trim() };
+      const s = session();
+      if (!s) return signIn(draft, false);
+      busy = true;
+      update();
+      say('Posting your review…');
+      try {
+        const res = await fetch(`${API}/reviews/thread`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.token}` },
+          body: JSON.stringify({ term: draft.term }),
+        });
+        const out = await res.json().catch(() => ({}));
+        if (res.status === 401 || out.signIn) return signIn(draft, true);
+        if (!res.ok || !out.ok) throw new Error(out.message || 'Something went wrong. Please try again later.');
+        const gh = await fetch('https://api.github.com/graphql', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${s.token}` },
+          body: JSON.stringify({
+            query: 'mutation($d: ID!, $b: String!) { addDiscussionComment(input: { discussionId: $d, body: $b }) { comment { url } } }',
+            variables: { d: out.discussion, b: `Score: ${draft.score}/10\n\n${draft.review}` },
+          }),
+        });
+        if (gh.status === 401) return signIn(draft, true);
+        const posted = await gh.json().catch(() => ({}));
+        const comment = posted.data && posted.data.addDiscussionComment && posted.data.addDiscussionComment.comment;
+        if (!gh.ok || !comment) {
+          throw new Error(`GitHub didn’t take the review: ${(posted.errors && posted.errors[0].message) || posted.message || `HTTP ${gh.status}`}`);
+        }
+        keep.set('sessionStorage', DRAFT, null);
+        text.value = '';
+        setScore(0);
+        say('Thanks, your review is posted. It can take a minute to show below, and the User score updates overnight.', 'ok', comment.url);
+        setTimeout(() => reloadThread(draft.term), 2500);
+      } catch (err) {
+        say(err instanceof TypeError ? 'Couldn’t reach GitHub or the review service. Check your connection and try again.' : err.message, 'error');
+      } finally {
+        busy = false;
+        update();
+      }
+    }
+
+    // giscus doesn't fetch a thread again for the term it's showing, so load it afresh.
+    function reloadThread(t) {
+      const frame = document.querySelector('iframe.giscus-frame');
+      if (!frame) return;
+      const u = new URL(frame.src);
+      u.searchParams.set('term', t);
+      if (root.dataset.theme) u.searchParams.set('theme', isDark() ? 'dark' : 'light');
+      frame.src = u.href;
+    }
+
+    form.querySelector('.gp-rate__buttons').addEventListener('click', (ev) => {
+      const b = ev.target.closest('button[data-score]');
+      if (b) setScore(Number(b.dataset.score));
+    });
+    text.addEventListener('input', update);
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      if (!submit.disabled) send();
+    });
+    form.querySelector('[data-review-signout]').addEventListener('click', () => {
+      keep.set('localStorage', SESSION, null);
+      update();
+      say('Signed out of GitHub on this site.');
+    });
+
+    // A review left unsent on this page (GitHub's sign-in page closed with Back) comes back, and
+    // on the way back from signing in it goes out.
+    const draft = keep.get('sessionStorage', DRAFT);
+    const mine = draft && terms.includes(draft.term) ? draft : null;
+    if (mine) restore(mine);
+    const back = location.hash.match(/^#rh-github=([\w-]+)/);
+    if (back) {
+      history.replaceState(null, '', `${location.pathname}${location.search}#comments`);
+      let result = { error: 'failed' };
+      try {
+        const b64 = back[1].replace(/-/g, '+').replace(/_/g, '/');
+        result = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))));
+      } catch { /* a broken link: treated as a failed sign-in */ }
+      form.scrollIntoView({ block: 'center' });
+      if (result.token) {
+        keep.set('localStorage', SESSION, { token: result.token, login: result.login, expires: result.expires || null });
+        update();
+        if (mine && !submit.disabled) send();
+        else say(`Signed in as @${result.login}.`, 'ok');
+      } else {
+        say(result.error === 'access_denied'
+          ? 'GitHub sign-in was cancelled, so your review wasn’t posted. It’s still here: press Submit to try again.'
+          : 'GitHub sign-in didn’t work, so your review wasn’t posted. Press Submit to try again.', 'error');
+      }
+    }
+    update();
+    return { show };
   }
 
   // Visits for Trending (tools/track_visits.py): one GoatCounter event per project, for a
