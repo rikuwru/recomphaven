@@ -80,6 +80,9 @@ STAGE_ORDER, TIER_ORDER = list(STAGES), list(TIERS)
 with open(os.path.join(ROOT, 'data', 'backdrops.js'), encoding='utf-8') as _f:
     _text = _f.read()
 BACKDROPS = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_BACKDROPS')):].rstrip().rstrip(';'))
+with open(os.path.join(ROOT, 'data', 'music.js'), encoding='utf-8') as _f:
+    _text = _f.read()
+MUSIC = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_MUSIC')):].rstrip().rstrip(';'))
 
 # What the "Recommended" reason says a project has.
 FEATURE_PHRASES = {
@@ -252,6 +255,24 @@ def backdrop_html(slug):
                      f'background-position:{esc(p.get("focus") or "center")}"></div>'
                      for i, p in enumerate(pics))
     return f'<div class="backdrop" aria-hidden="true">{slides}</div>\n'
+
+
+def music_html(slug):
+    """A game page's music from data/music.js, and the button in the corner that mutes it. game.js
+    fades it in and out and loops it."""
+    track = MUSIC.get(slug)
+    if not track:
+        return ''
+    about = f'{track["title"]}, {track["credit"]}' if track.get('credit') else track['title']
+    return f'''<div class="music" data-music data-volume="{track.get('volume', 0.3)}">
+  <audio src="../../music/{quote(track['file'])}" preload="none" loop></audio>
+  <button class="music__toggle" type="button" aria-pressed="true" aria-label="Music: {esc(track['title'])}" title="{esc(about)}">
+    <svg class="i-on" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 9.5h4l5-4.5v14l-5-4.5H3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M15.5 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>
+    <svg class="i-off" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 9.5h4l5-4.5v14l-5-4.5H3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="m16 9.5 5 5m0-5-5 5"/></svg>
+    <span class="music__label">{esc(track['title'])}</span>
+  </button>
+</div>
+'''
 
 
 def cover_html(e, alt):
@@ -476,7 +497,8 @@ def page(game, share_url, snapshot):
   <p class="gp-missing">Know another project for {esc(name)}? <a href="{esc(missing)}" target="_blank" rel="noopener">Submit it</a>.</p>'''
     return document(title=title, description=description, path=f'games/{slug}/', share_url=share_url,
                     image_alt=f'{name} on Recomp Haven: {pick["project"]}, {pick["quality"]} tier',
-                    body=body, snapshot=snapshot, visit=None if multi else pick['id'], backdrop=backdrop_html(slug))
+                    body=body, snapshot=snapshot, visit=None if multi else pick['id'], backdrop=backdrop_html(slug),
+                    music=music_html(slug))
 
 
 def comments_html(game):
@@ -559,12 +581,12 @@ def analytics_note():
             'without cookies or personal data, to rank Trending.</p>\n')
 
 
-def document(*, title, description, path, share_url, image_alt, body, snapshot, visit=None, backdrop=''):
+def document(*, title, description, path, share_url, image_alt, body, snapshot, visit=None, backdrop='', music=''):
     """A whole page in the site's header and footer. path is from the site root, like "games/pt/".
-    visit: the id of a project to count a visit for when the page opens. backdrop: backdrop_html()."""
+    visit: the id of a project to count a visit for when the page opens. backdrop: backdrop_html(); music: music_html()."""
     root = '../' * path.count('/')
     url = f'{SITE}/{path}'
-    body_attr = f' data-visit="{esc(visit)}"' if visit else ''
+    body_attr = (f' data-visit="{esc(visit)}"' if visit else '') + (' class="has-music"' if music else '')
     return f'''<!doctype html>
 <html lang="en">
 <head>
@@ -625,7 +647,7 @@ def document(*, title, description, path, share_url, image_alt, body, snapshot, 
   <p>Data snapshot <time datetime="{snapshot}">{fmt_date(snapshot)}</time>. Repository stats from GitHub; tiers and stages are Recomp Haven's own. Box art belongs to each game's publisher. <a href="{root}">See every recomp</a> · <a href="{root}releases/">Latest releases</a> · <a href="{SITE}/feed.xml">RSS feed</a> · <a href="{FEEDBACK_URL}" target="_blank" rel="noopener">Send feedback</a> · <a href="{BUG_URL}" target="_blank" rel="noopener">Report a bug</a> · <a href="{REPO_URL}" target="_blank" rel="noopener">Source code</a> (MIT License; built with AI help).</p>
 {analytics_note()}</footer>
 
-<script src="{root}game.js"></script>
+{music}<script src="{root}game.js"></script>
 </body>
 </html>
 '''
@@ -1004,6 +1026,12 @@ def main():
     for name in STATIC:
         src = os.path.join(ROOT, name)
         (shutil.copytree if os.path.isdir(src) else shutil.copy2)(src, os.path.join(out, name))
+    for track in MUSIC.values():  # only the music that's in use
+        src = os.path.join(ROOT, 'music', track['file'])
+        if not os.path.isfile(src):
+            raise SystemExit(f'data/music.js: no music/{track["file"]}')
+        os.makedirs(os.path.join(out, 'music'), exist_ok=True)
+        shutil.copy2(src, os.path.join(out, 'music', track['file']))
 
     share_dir = os.path.join(out, 'assets', 'share')
     os.makedirs(share_dir)

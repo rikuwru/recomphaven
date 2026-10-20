@@ -1307,6 +1307,30 @@ dialog::backdrop { background: var(--backdrop); }
 dialog.has-backdrop[open] { display: flex; flex-direction: column; overflow: hidden; }
 dialog.has-backdrop .d-body { position: relative; z-index: 1; min-height: 0; overflow: auto; }
 
+/* A game page's music (music_html() in tools/build_pages.py): the button in the corner that mutes
+   it, showing the track's name (just the speaker on phones). The footer leaves room for it. */
+.music { position: fixed; right: 16px; bottom: max(16px, env(safe-area-inset-bottom)); z-index: 20; }
+.music__toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  height: 40px; padding: 0 14px 0 12px;
+  border: 1px solid var(--line); border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  box-shadow: var(--shadow);
+  color: var(--fg); font: inherit; font-size: 0.85rem; font-weight: 600;
+  cursor: pointer;
+}
+.music__toggle:hover { border-color: var(--accent); color: var(--accent); }
+.music__toggle svg { flex: none; }
+.music__toggle .i-off, .music__toggle[aria-pressed="false"] .i-on { display: none; }
+.music__toggle[aria-pressed="false"] .i-off { display: block; }
+.music__toggle[aria-pressed="false"] .music__label { color: var(--muted); text-decoration: line-through; }
+.has-music .footer { padding-bottom: 76px; }
+@media (max-width: 560px) {
+  .music__label { display: none; }
+  .music__toggle { width: 44px; height: 44px; padding: 0; justify-content: center; }
+}
+
 /* Ratings and comments (giscus) */
 .gp-comments { display: grid; gap: 14px; scroll-margin-top: 16px; }
 .gp-comments .gp-h2 { margin: 8px 0 0; }

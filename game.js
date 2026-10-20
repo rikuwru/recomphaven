@@ -5,6 +5,8 @@
   'use strict';
 
   const root = document.documentElement;
+  // Leaving the page: the music below swaps this for one that fades the sound out first.
+  let leaveSoftly = (go) => go();
   const button = document.getElementById('theme-toggle');
   const darkMQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
   const isDark = () => root.dataset.theme ? root.dataset.theme === 'dark' : !!(darkMQ && darkMQ.matches);
@@ -153,7 +155,7 @@
       keep.set('localStorage', SESSION, null);
       keep.set('sessionStorage', DRAFT, draft);
       say(again ? 'Your GitHub sign-in has run out. Taking you to GitHub to sign in again…' : 'Taking you to GitHub to sign in…');
-      location.assign(`${API}/auth/start?return=${encodeURIComponent(location.href.split('#')[0])}`);
+      leaveSoftly(() => location.assign(`${API}/auth/start?return=${encodeURIComponent(location.href.split('#')[0])}`));
     }
 
     async function send() {
@@ -356,6 +358,122 @@
         drift(slides[at]);
         slides[at].classList.add('is-on');
       }, 9000);
+    }
+  }
+
+  // A game page's music (music_html() in tools/build_pages.py): it fades in, plays at a gentle
+  // volume, fades out over its last seconds and starts again. Browsers only let a page play sound
+  // after the visitor clicks or presses a key, so when it can't start right away it starts on the
+  // first one. The button mutes it (with a short fade), and the choice is remembered. Links that
+  // leave the page fade it out over a second before going; a browser's Back button or a closed
+  // tab can't be held back, so those still stop it at once.
+  const music = document.querySelector('[data-music]');
+  if (music) {
+    const audio = music.querySelector('audio');
+    const toggle = music.querySelector('button');
+    const VOLUME = Number(music.dataset.volume) || 0.3;
+    const FADE_IN = 4, FADE_OUT = 8;  // seconds
+    let on = true, started = false, level = 0, ctx = null, gain = null, timer = 0;
+    try { on = localStorage.getItem('rh-music') !== 'off'; } catch { /* storage unavailable */ }
+
+    // Where the volume should be now: rising over the first seconds, falling over the last.
+    const target = () => {
+      if (!on) return 0;
+      const t = audio.currentTime, d = audio.duration;
+      let v = VOLUME * Math.min(1, t / FADE_IN);
+      if (d && Number.isFinite(d)) v *= Math.min(1, Math.max(0, (d - t) / FADE_OUT));
+      return v;
+    };
+    const tick = () => {
+      const want = target();
+      level += (want - level) * 0.12;  // eases toward it, so muting and unmuting fade too
+      if (Math.abs(want - level) < 0.002) level = want;
+      if (gain) gain.gain.setTargetAtTime(level, ctx.currentTime, 0.05);
+      else audio.volume = level;
+      if (!on && level === 0 && !audio.paused) audio.pause();
+    };
+    // Volume through Web Audio, which iPhones need: they ignore an audio element's own volume.
+    // It has to be set up while handling a click or key press.
+    const connect = () => {
+      if (ctx || !window.AudioContext) return;
+      try {
+        ctx = new AudioContext();
+        gain = ctx.createGain();
+        gain.gain.value = level;
+        ctx.createMediaElementSource(audio).connect(gain).connect(ctx.destination);
+        audio.volume = 1;
+      } catch { ctx = null; gain = null; }
+    };
+    const about = toggle.title;
+    const paint = () => {
+      toggle.setAttribute('aria-pressed', String(on));
+      toggle.title = `${on ? 'Mute' : 'Play'}: ${about}`;
+    };
+    async function play(fromGesture) {
+      if (fromGesture) connect();
+      if (!gain) audio.volume = level;
+      try {
+        if (ctx && ctx.state !== 'running') await ctx.resume();
+        await audio.play();
+      } catch {
+        return false;
+      }
+      started = true;
+      if (!timer) timer = setInterval(tick, 100);
+      return true;
+    }
+    const GESTURES = ['click', 'keydown', 'touchend'];
+    const firstGesture = async (ev) => {
+      if (toggle.contains(ev.target) || !on || started) return;  // the button does its own
+      if (await play(true)) GESTURES.forEach((t) => document.removeEventListener(t, firstGesture));
+    };
+
+    const LEAVE_FADE = 1000;  // ms
+    leaveSoftly = (go) => {
+      if (audio.paused || level < 0.005) return go();
+      clearInterval(timer);
+      timer = 0;
+      const from = level, t0 = performance.now();
+      const step = () => {
+        const k = Math.min(1, (performance.now() - t0) / LEAVE_FADE);
+        level = from * (1 - k) * (1 - k);  // eases out
+        if (gain) gain.gain.setTargetAtTime(level, ctx.currentTime, 0.02);
+        else audio.volume = level;
+        if (k < 1) requestAnimationFrame(step);
+        else {
+          audio.pause();
+          go();
+        }
+      };
+      requestAnimationFrame(step);
+    };
+    // A link that takes this tab to another page, as opposed to a new tab or a spot on this page.
+    document.addEventListener('click', (ev) => {
+      const link = ev.target.closest('a[href]');
+      if (!link || ev.defaultPrevented || ev.button !== 0 || ev.ctrlKey || ev.metaKey || ev.shiftKey || ev.altKey) return;
+      if ((link.target && link.target !== '_self') || link.hasAttribute('download') || !/^https?:$/.test(link.protocol)) return;
+      if (link.origin === location.origin && link.pathname === location.pathname && link.search === location.search) return;
+      ev.preventDefault();
+      leaveSoftly(() => { location.href = link.href; });
+    });
+
+    toggle.addEventListener('click', () => {
+      on = started ? !on : true;
+      try { localStorage.setItem('rh-music', on ? 'on' : 'off'); } catch { /* storage unavailable */ }
+      paint();
+      if (on && (audio.paused || !started)) play(true);
+    });
+    // Back to this page from the browser's memory of it, paused by the fade on the way out.
+    window.addEventListener('pageshow', (ev) => {
+      if (!ev.persisted || !on || !started) return;
+      level = 0;
+      play(false);
+    });
+    paint();
+    if (on) {
+      play(false).then((ok) => {
+        if (!ok) GESTURES.forEach((t) => document.addEventListener(t, firstGesture));
+      });
     }
   }
 
