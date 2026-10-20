@@ -364,7 +364,8 @@
   // A game page's music (music_html() in tools/build_pages.py): it fades in, plays at a gentle
   // volume, fades out over its last seconds and starts again. Browsers only let a page play sound
   // after the visitor clicks or presses a key, so when it can't start right away it starts on the
-  // first one. The button mutes it (with a short fade), and the choice is remembered. Links that
+  // first one, and the button says so meanwhile. The button mutes it (with a short fade), and the
+  // choice is remembered. Links that
   // leave the page fade it out over a second before going; a browser's Back button or a closed
   // tab can't be held back, so those still stop it at once.
   const music = document.querySelector('[data-music]');
@@ -409,6 +410,14 @@
       toggle.setAttribute('aria-pressed', String(on));
       toggle.title = `${on ? 'Mute' : 'Play'}: ${about}`;
     };
+    // While the browser holds the music back, the button says how to start it, and pulses.
+    const label = toggle.querySelector('.music__label');
+    const name = label.textContent;
+    const touch = window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+    const waiting = (yes) => {
+      music.classList.toggle('is-waiting', yes);
+      label.textContent = yes ? `${touch ? 'Tap' : 'Click'} anywhere for music` : name;
+    };
     async function play(fromGesture) {
       if (fromGesture) connect();
       if (!gain) audio.volume = level;
@@ -418,6 +427,7 @@
       } catch {
         return false;
       }
+      waiting(false);
       started = true;
       if (!timer) timer = setInterval(tick, 100);
       return true;
@@ -472,7 +482,9 @@
     paint();
     if (on) {
       play(false).then((ok) => {
-        if (!ok) GESTURES.forEach((t) => document.addEventListener(t, firstGesture));
+        if (ok) return;
+        waiting(true);
+        GESTURES.forEach((t) => document.addEventListener(t, firstGesture));
       });
     }
   }

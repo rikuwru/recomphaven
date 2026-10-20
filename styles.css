@@ -1326,9 +1326,20 @@ dialog.has-backdrop .d-body { position: relative; z-index: 1; min-height: 0; ove
 .music__toggle[aria-pressed="false"] .i-off { display: block; }
 .music__toggle[aria-pressed="false"] .music__label { color: var(--muted); text-decoration: line-through; }
 .has-music .footer { padding-bottom: 76px; }
+/* Waiting for a click before the browser lets it play: "Click anywhere for music", pulsing. */
+.music.is-waiting .music__toggle {
+  border-color: var(--accent); color: var(--accent);
+  animation: music-pulse 2.4s ease-out infinite;
+}
+@keyframes music-pulse {
+  0% { box-shadow: var(--shadow), 0 0 0 0 color-mix(in srgb, var(--accent) 50%, transparent); }
+  70%, 100% { box-shadow: var(--shadow), 0 0 0 12px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
 @media (max-width: 560px) {
   .music__label { display: none; }
   .music__toggle { width: 44px; height: 44px; padding: 0; justify-content: center; }
+  .music.is-waiting .music__label { display: inline; }
+  .music.is-waiting .music__toggle { width: auto; padding: 0 16px 0 14px; }
 }
 
 /* Ratings and comments (giscus) */
