@@ -336,6 +336,29 @@
     button.replaceWith(frame);
   });
 
+  // A game page's backdrop (backdrop_html() in tools/build_pages.py): every 9 seconds the next
+  // picture fades in, drifting left and zooming in as it goes, and the last one leads back to the
+  // first. It stays on the first picture for people who ask for less motion.
+  const slides = [...document.querySelectorAll('.backdrop__slide')];
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (slides.length && !calm) {
+    const drift = (s) => {
+      s.classList.remove('is-drifting');
+      void s.offsetWidth;  // starts the drift over
+      s.classList.add('is-drifting');
+    };
+    let at = 0;
+    drift(slides[0]);
+    if (slides.length > 1) {
+      setInterval(() => {
+        slides[at].classList.remove('is-on');  // fades out, still drifting
+        at = (at + 1) % slides.length;
+        drift(slides[at]);
+        slides[at].classList.add('is-on');
+      }, 9000);
+    }
+  }
+
   // A cover that fails to load turns into the initials placeholder.
   document.addEventListener('error', (ev) => {
     const box = ev.target instanceof HTMLImageElement && ev.target.closest('.cover, .d-cover');

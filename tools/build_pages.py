@@ -39,7 +39,7 @@ import sys
 import unicodedata
 from collections import defaultdict
 from email.utils import format_datetime
-from urllib.parse import urlencode
+from urllib.parse import quote, urlencode
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
@@ -233,6 +233,21 @@ def os_icon(k):
 
 def stage_pill(e):
     return f'<span class="stage" data-stage="{e["stage"]}">{esc(STAGES[e["stage"]]["label"])}</span>'
+
+
+def backdrop_html(slug):
+    """A game page's backdrop: the pictures in assets/backdrops/<slug>/, in name order, out of focus
+    behind the page. game.js fades from one to the next, each drifting left and zooming in a little."""
+    folder = os.path.join(ROOT, 'assets', 'backdrops', slug)
+    if not os.path.isdir(folder):
+        return ''
+    names = sorted(n for n in os.listdir(folder) if n.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')))
+    if not names:
+        return ''
+    slides = ''.join(f'<div class="backdrop__slide{" is-on" if i == 0 else ""}" '
+                     f'style="background-image:url(&quot;../../assets/backdrops/{quote(slug)}/{quote(n)}&quot;)"></div>'
+                     for i, n in enumerate(names))
+    return f'<div class="backdrop" aria-hidden="true">{slides}</div>\n'
 
 
 def cover_html(e, alt):
@@ -457,7 +472,7 @@ def page(game, share_url, snapshot):
   <p class="gp-missing">Know another project for {esc(name)}? <a href="{esc(missing)}" target="_blank" rel="noopener">Submit it</a>.</p>'''
     return document(title=title, description=description, path=f'games/{slug}/', share_url=share_url,
                     image_alt=f'{name} on Recomp Haven: {pick["project"]}, {pick["quality"]} tier',
-                    body=body, snapshot=snapshot, visit=None if multi else pick['id'])
+                    body=body, snapshot=snapshot, visit=None if multi else pick['id'], backdrop=backdrop_html(slug))
 
 
 def comments_html(game):
@@ -540,9 +555,9 @@ def analytics_note():
             'without cookies or personal data, to rank Trending.</p>\n')
 
 
-def document(*, title, description, path, share_url, image_alt, body, snapshot, visit=None):
+def document(*, title, description, path, share_url, image_alt, body, snapshot, visit=None, backdrop=''):
     """A whole page in the site's header and footer. path is from the site root, like "games/pt/".
-    visit: the id of a project to count a visit for when the page opens."""
+    visit: the id of a project to count a visit for when the page opens. backdrop: backdrop_html()."""
     root = '../' * path.count('/')
     url = f'{SITE}/{path}'
     body_attr = f' data-visit="{esc(visit)}"' if visit else ''
@@ -575,7 +590,7 @@ def document(*, title, description, path, share_url, image_alt, body, snapshot, 
 <link rel="stylesheet" href="{root}styles.css">
 {mail_meta()}{analytics_tag()}</head>
 <body{body_attr}>
-<a class="skip" href="#main">Skip to the content</a>
+{backdrop}<a class="skip" href="#main">Skip to the content</a>
 
 <header class="masthead masthead--slim">
   <div class="wrap masthead__top">
