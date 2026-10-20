@@ -36,6 +36,7 @@
   --on-rate: #ffffff;
   --veil: 30%;  /* how much of the page colour covers a game page's backdrop, at the top... */
   --veil-end: 72%;  /* ...and three quarters of the way down */
+  --veil-window-end: 86%;  /* the details window's, halfway down: it's thick with text */
   --ok: #1e8549;
   --beta: #0a7a7a;
   --warn: #9e640a;
@@ -73,6 +74,7 @@
     --on-rate: #0e1017;
     --veil: 50%;
     --veil-end: 80%;
+    --veil-window-end: 88%;
     --ok: #4cc47f;
     --beta: #3fc7c1;
     --warn: #e3a63c;
@@ -100,6 +102,7 @@
   --on-rate: #0e1017;
   --veil: 50%;
   --veil-end: 80%;
+  --veil-window-end: 88%;
   --ok: #4cc47f;
   --beta: #3fc7c1;
   --warn: #e3a63c;
@@ -1292,6 +1295,17 @@ dialog::backdrop { background: var(--backdrop); }
     color-mix(in srgb, var(--bg) var(--veil), transparent),
     color-mix(in srgb, var(--bg) var(--veil-end), transparent) 75%);
 }
+
+/* The same behind a game's details window (app.js), on the window's own colour. With a backdrop,
+   the details scroll inside the window so the pictures stay put behind them. */
+.backdrop--window { position: absolute; z-index: 0; }
+.backdrop--window::after {
+  background: linear-gradient(to bottom,
+    color-mix(in srgb, var(--surface) var(--veil), transparent),
+    color-mix(in srgb, var(--surface) var(--veil-window-end), transparent) 55%);
+}
+dialog.has-backdrop[open] { display: flex; flex-direction: column; overflow: hidden; }
+dialog.has-backdrop .d-body { position: relative; z-index: 1; min-height: 0; overflow: auto; }
 
 /* Ratings and comments (giscus) */
 .gp-comments { display: grid; gap: 14px; scroll-margin-top: 16px; }

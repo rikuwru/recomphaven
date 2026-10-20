@@ -710,12 +710,49 @@
         ${MAIL_API ? followForm('d-follow', e) : ''}
       </div>`;
 
+    showBackdrop(slug);
     if (!dialog.open) {
       if (typeof dialog.showModal === 'function') dialog.showModal(); else dialog.setAttribute('open', '');
     }
     dialog.scrollTop = 0;
+    $('#d-body').scrollTop = 0;
     if (push) pushDetail(e.id);
     countVisit(e);
+  }
+
+  // A game with a backdrop (data/backdrops.js) shows it behind its details, as on its game page
+  // (game.js): every 9 seconds the next picture fades in, drifting left and zooming in as it
+  // goes. It stays on the first picture for people who ask for less motion.
+  const BACKDROPS = window.RECOMPHAVEN_BACKDROPS || {};
+  const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let backdropTimer = 0;
+  let backdropSlug = null;
+  function showBackdrop(slug) {
+    const box = $('#d-backdrop');
+    const pics = BACKDROPS[slug] || [];
+    dialog.classList.toggle('has-backdrop', pics.length > 0);
+    box.hidden = !pics.length;
+    if (slug === backdropSlug && pics.length) return;  // the same game: keep it running
+    clearInterval(backdropTimer);
+    backdropSlug = slug;
+    box.innerHTML = pics.map((p, i) => `<div class="backdrop__slide${i ? '' : ' is-on'}" style="background-image:url(&quot;assets/backdrops/${encodeURIComponent(slug)}/${encodeURIComponent(p.file)}&quot;);background-position:${esc(p.focus || 'center')}"></div>`).join('');
+    const slides = [...box.children];
+    if (!slides.length || calm) return;
+    const drift = (s) => {
+      s.classList.remove('is-drifting');
+      void s.offsetWidth;  // starts the drift over
+      s.classList.add('is-drifting');
+    };
+    let at = 0;
+    drift(slides[0]);
+    if (slides.length > 1) {
+      backdropTimer = setInterval(() => {
+        slides[at].classList.remove('is-on');  // fades out, still drifting
+        at = (at + 1) % slides.length;
+        drift(slides[at]);
+        slides[at].classList.add('is-on');
+      }, 9000);
+    }
   }
 
   // Opening a game's details adds a history entry (#id), so the browser's or phone's Back button
@@ -754,6 +791,8 @@
 
   dialog.addEventListener('close', () => {
     dialog.querySelectorAll('.video iframe').forEach((frame) => frame.remove());
+    clearInterval(backdropTimer);
+    backdropSlug = null;
     if (detailPushed) {
       detailPushed = false;
       history.back();

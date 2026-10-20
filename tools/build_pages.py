@@ -77,6 +77,9 @@ TABLES = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_TABLES')):].
 CONSOLES, STAGES, TIERS = TABLES['consoles'], TABLES['stages'], TABLES['tiers']
 FEATURES, OS, PLATFORM_SOURCE = TABLES['features'], TABLES['os'], TABLES['platformSource']
 STAGE_ORDER, TIER_ORDER = list(STAGES), list(TIERS)
+with open(os.path.join(ROOT, 'data', 'backdrops.js'), encoding='utf-8') as _f:
+    _text = _f.read()
+BACKDROPS = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_BACKDROPS')):].rstrip().rstrip(';'))
 
 # What the "Recommended" reason says a project has.
 FEATURE_PHRASES = {
@@ -236,17 +239,18 @@ def stage_pill(e):
 
 
 def backdrop_html(slug):
-    """A game page's backdrop: the pictures in assets/backdrops/<slug>/, in name order, out of focus
-    behind the page. game.js fades from one to the next, each drifting left and zooming in a little."""
-    folder = os.path.join(ROOT, 'assets', 'backdrops', slug)
-    if not os.path.isdir(folder):
+    """A game page's backdrop: its pictures from data/backdrops.js, out of focus behind the page.
+    game.js fades from one to the next, each drifting left and zooming in a little."""
+    pics = BACKDROPS.get(slug) or []
+    for p in pics:
+        if not os.path.isfile(os.path.join(ROOT, 'assets', 'backdrops', slug, p['file'])):
+            raise SystemExit(f'data/backdrops.js: no assets/backdrops/{slug}/{p["file"]}')
+    if not pics:
         return ''
-    names = sorted(n for n in os.listdir(folder) if n.lower().endswith(('.webp', '.jpg', '.jpeg', '.png')))
-    if not names:
-        return ''
-    slides = ''.join(f'<div class="backdrop__slide{" is-on" if i == 0 else ""}" '
-                     f'style="background-image:url(&quot;../../assets/backdrops/{quote(slug)}/{quote(n)}&quot;)"></div>'
-                     for i, n in enumerate(names))
+    slides = ''.join(f'<div class="backdrop__slide{" is-on" if i == 0 else ""}" style="background-image:'
+                     f'url(&quot;../../assets/backdrops/{quote(slug)}/{quote(p["file"])}&quot;);'
+                     f'background-position:{esc(p.get("focus") or "center")}"></div>'
+                     for i, p in enumerate(pics))
     return f'<div class="backdrop" aria-hidden="true">{slides}</div>\n'
 
 
