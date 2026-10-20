@@ -386,6 +386,12 @@
       return v;
     };
     const tick = () => {
+      if (on && started && audio.paused) {  // the browser stopped it: it wants a click first
+        started = false;
+        waiting(true);
+        listen();
+        return;
+      }
       const want = target();
       level += (want - level) * 0.12;  // eases toward it, so muting and unmuting fade too
       if (Math.abs(want - level) < 0.002) level = want;
@@ -420,7 +426,9 @@
     };
     async function play(fromGesture) {
       if (fromGesture) connect();
-      if (!gain) audio.volume = level;
+      // Barely audible rather than silent: Firefox and Safari let silent sound start and then
+      // pause it as it fades in, so asking at a volume they count as sound gets a straight answer.
+      if (!gain) audio.volume = Math.max(level, 0.001);
       try {
         if (ctx && ctx.state !== 'running') await ctx.resume();
         await audio.play();
@@ -437,6 +445,15 @@
       if (toggle.contains(ev.target) || !on || started) return;  // the button does its own
       if (await play(true)) GESTURES.forEach((t) => document.removeEventListener(t, firstGesture));
     };
+    function listen() {
+      GESTURES.forEach((t) => document.addEventListener(t, firstGesture));
+    }
+    // Plays now if the browser allows it, or else waits for a click or key press, saying so.
+    const playOrWait = () => play(false).then((ok) => {
+      if (ok) return;
+      waiting(true);
+      listen();
+    });
 
     const LEAVE_FADE = 1000;  // ms
     leaveSoftly = (go) => {
@@ -475,18 +492,12 @@
     });
     // Back to this page from the browser's memory of it, paused by the fade on the way out.
     window.addEventListener('pageshow', (ev) => {
-      if (!ev.persisted || !on || !started) return;
+      if (!ev.persisted || !on) return;
       level = 0;
-      play(false);
+      playOrWait();
     });
     paint();
-    if (on) {
-      play(false).then((ok) => {
-        if (ok) return;
-        waiting(true);
-        GESTURES.forEach((t) => document.addEventListener(t, firstGesture));
-      });
-    }
+    if (on) playOrWait();
   }
 
   // A cover that fails to load turns into the initials placeholder.
