@@ -64,7 +64,7 @@ Game pages can take Steam-style reviews: pick a score, write at least 20 charact
 1. On GitHub, open **Settings → Developer settings → GitHub Apps → New GitHub App** and fill in:
    - **GitHub App name**: anything free, like `Recomp Haven Reviews`. Reviewers see it when they sign in.
    - **Homepage URL**: `https://recomphaven.com`
-   - **Callback URL**: `https://recomphaven-mail.intooblivion-riku.workers.dev/auth/callback`
+   - **Redirect URI** (called Callback URL on older versions of the page): `https://recomphaven-mail.intooblivion-riku.workers.dev/auth/callback`. Leave **Allow wildcard matching** unticked.
    - Leave **Expire user authorization tokens** ticked, and **Request user authorization (OAuth) during installation** and **Enable Device Flow** unticked.
    - **Webhook**: untick **Active**.
    - **Permissions → Repository permissions → Discussions**: **Read and write**. Leave everything else at No access.

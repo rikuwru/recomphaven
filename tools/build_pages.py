@@ -54,10 +54,9 @@ GISCUS = {'repo': 'rikuwru/recomphaven', 'repo_id': 'R_kgDOVMUa9g',
           'category': 'Ratings and comments', 'category_id': 'DIC_kwDOVMUa9s4DIxXc'}
 COMMENTS_ON = bool(GISCUS['repo_id'] and GISCUS['category_id'])
 # Steam-style reviews above the comments: a score, a written review and a Submit button, posted to the
-# project's thread as the reviewer, after a GitHub sign-in through the newsletter Worker. Leave it off
-# until the GitHub App is set up (newsletter/README.md: "Review sign-in"). RH_REVIEWS=1 turns it on
-# for a local build.
-REVIEWS_ON = False or os.environ.get('RH_REVIEWS') == '1'
+# project's thread as the reviewer, after a GitHub sign-in through the newsletter Worker's GitHub App
+# (newsletter/README.md: "Review sign-in"). False puts back the buttons that copy "Score: N/10".
+REVIEWS_ON = True
 REVIEW_MIN = 20  # the shortest review, in characters
 # GoatCounter site code (the "recomphaven" in recomphaven.goatcounter.com), or '' for no
 # visit counting. It counts the visits that rank Trending; see tools/track_visits.py.
