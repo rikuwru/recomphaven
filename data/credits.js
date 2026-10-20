@@ -43,5 +43,7 @@ window.RECOMPHAVEN_CREDITS = [
   {"name": "NoahVl", "site": "github", "for": "Submitted Birdman64, the Pilotwings 64 port"},
   {"name": "moesuito", "site": "github", "for": "Submitted GT4Recomp, the Gran Turismo 4 recomp"},
   {"name": "sackchief", "site": "github", "for": "Corrected the Dragon Quest IX listing"},
-  {"name": "Graine25", "site": "reddit", "for": "Suggested Spider-Man: Edge of Time for S tier"}
+  {"name": "Graine25", "site": "reddit", "for": "Suggested Spider-Man: Edge of Time for S tier and the Blue Dragon update"},
+  {"name": "bigmouthprickfromIV", "site": "github", "for": "Submitted ReStreet, the FIFA Street (2012) recomp"},
+  {"name": "PFLI2", "site": "github", "for": "Prompted an update to the Castlevania: Symphony of the Night listing"}
 ];
