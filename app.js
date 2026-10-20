@@ -720,22 +720,22 @@
     countVisit(e);
   }
 
-  // A game with a backdrop (data/backdrops.js) shows it behind its details, as on its game page
+  // A game with a backdrop (data/media.js) shows it behind its details, as on its game page
   // (game.js): every 9 seconds the next picture fades in, drifting left and zooming in as it
   // goes. It stays on the first picture for people who ask for less motion.
-  const BACKDROPS = window.RECOMPHAVEN_BACKDROPS || {};
+  const MEDIA = window.RECOMPHAVEN_MEDIA || { base: '', games: {} };
   const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
   let backdropTimer = 0;
   let backdropSlug = null;
   function showBackdrop(slug) {
     const box = $('#d-backdrop');
-    const pics = BACKDROPS[slug] || [];
+    const pics = (MEDIA.games[slug] || {}).backdrop || [];
     dialog.classList.toggle('has-backdrop', pics.length > 0);
     box.hidden = !pics.length;
     if (slug === backdropSlug && pics.length) return;  // the same game: keep it running
     clearInterval(backdropTimer);
     backdropSlug = slug;
-    box.innerHTML = pics.map((p, i) => `<div class="backdrop__slide${i ? '' : ' is-on'}" style="background-image:url(&quot;assets/backdrops/${encodeURIComponent(slug)}/${encodeURIComponent(p.file)}&quot;);background-position:${esc(p.focus || 'center')}"></div>`).join('');
+    box.innerHTML = pics.map((p, i) => `<div class="backdrop__slide${i ? '' : ' is-on'}" style="background-image:url(&quot;${esc(MEDIA.base)}backdrops/${encodeURIComponent(slug)}/${encodeURIComponent(p.file)}&quot;);background-position:${esc(p.focus || 'center')}"></div>`).join('');
     const slides = [...box.children];
     if (!slides.length || calm) return;
     const drift = (s) => {

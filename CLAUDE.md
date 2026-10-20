@@ -11,7 +11,11 @@ native ports built from them. It's maintained by rikuwru with Claude's help. Rea
 - **S tier is rikuwru's call.** Never move a project into or out of S on your own; suggest it and let them decide.
 - **Write your own text.** Summaries are written fresh from each project's own README. Never copy text from other
   catalogs or sites.
-- **No game files, ever.** The site links to projects and hosts nothing from the games.
+- **No game files, ever.** The site links to projects and hosts no ROMs, discs or game data.
+- **Game-page media stays out of this repo.** The pictures behind game pages and their theme music live in the
+  separate public repo `rikuwru/recomphaven-media` (working copy in `media/`, ignored here), listed in
+  `data/media.js`. Downloaded music goes in `music/` (also ignored); `tools/shrink_music.py` makes the published
+  copies and sets their volume. rikuwru accepted the takedown risk for that repo; don't add media here instead.
 - Leave the newsletter Worker (`newsletter/`) and its secrets alone unless asked.
 
 ## What gets listed

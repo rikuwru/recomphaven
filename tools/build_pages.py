@@ -77,12 +77,12 @@ TABLES = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_TABLES')):].
 CONSOLES, STAGES, TIERS = TABLES['consoles'], TABLES['stages'], TABLES['tiers']
 FEATURES, OS, PLATFORM_SOURCE = TABLES['features'], TABLES['os'], TABLES['platformSource']
 STAGE_ORDER, TIER_ORDER = list(STAGES), list(TIERS)
-with open(os.path.join(ROOT, 'data', 'backdrops.js'), encoding='utf-8') as _f:
+# Game-page pictures and music (data/media.js), kept in the separate media repository. RH_MEDIA_BASE
+# points the build at another copy, like a local server for media/, for trying changes.
+with open(os.path.join(ROOT, 'data', 'media.js'), encoding='utf-8') as _f:
     _text = _f.read()
-BACKDROPS = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_BACKDROPS')):].rstrip().rstrip(';'))
-with open(os.path.join(ROOT, 'data', 'music.js'), encoding='utf-8') as _f:
-    _text = _f.read()
-MUSIC = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_MUSIC')):].rstrip().rstrip(';'))
+MEDIA = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_MEDIA')):].rstrip().rstrip(';'))
+MEDIA_BASE = os.environ.get('RH_MEDIA_BASE') or MEDIA['base']
 
 # What the "Recommended" reason says a project has.
 FEATURE_PHRASES = {
@@ -242,30 +242,28 @@ def stage_pill(e):
 
 
 def backdrop_html(slug):
-    """A game page's backdrop: its pictures from data/backdrops.js, out of focus behind the page.
+    """A game page's backdrop: its pictures from data/media.js, out of focus behind the page.
     game.js fades from one to the next, each drifting left and zooming in a little."""
-    pics = BACKDROPS.get(slug) or []
-    for p in pics:
-        if not os.path.isfile(os.path.join(ROOT, 'assets', 'backdrops', slug, p['file'])):
-            raise SystemExit(f'data/backdrops.js: no assets/backdrops/{slug}/{p["file"]}')
+    pics = (MEDIA['games'].get(slug) or {}).get('backdrop') or []
     if not pics:
         return ''
     slides = ''.join(f'<div class="backdrop__slide{" is-on" if i == 0 else ""}" style="background-image:'
-                     f'url(&quot;../../assets/backdrops/{quote(slug)}/{quote(p["file"])}&quot;);'
+                     f'url(&quot;{esc(MEDIA_BASE)}backdrops/{quote(slug)}/{quote(p["file"])}&quot;);'
                      f'background-position:{esc(p.get("focus") or "center")}"></div>'
                      for i, p in enumerate(pics))
     return f'<div class="backdrop" aria-hidden="true">{slides}</div>\n'
 
 
 def music_html(slug):
-    """A game page's music from data/music.js, and the button in the corner that mutes it. game.js
-    fades it in and out and loops it."""
-    track = MUSIC.get(slug)
+    """A game page's music from data/media.js, and the button in the corner that mutes it. game.js
+    fades it in and out and loops it. crossorigin lets its volume go through Web Audio, since the
+    music comes from the media repository's site."""
+    track = (MEDIA['games'].get(slug) or {}).get('music')
     if not track:
         return ''
     about = f'{track["title"]}, {track["credit"]}' if track.get('credit') else track['title']
     return f'''<div class="music" data-music data-volume="{track.get('volume', 0.3)}">
-  <audio src="../../music/{quote(track['file'])}" preload="none" loop></audio>
+  <audio src="{esc(MEDIA_BASE)}music/{quote(track['file'])}" crossorigin="anonymous" preload="none" loop></audio>
   <button class="music__toggle" type="button" aria-pressed="true" aria-label="Music: {esc(track['title'])}" title="{esc(about)}">
     <svg class="i-on" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 9.5h4l5-4.5v14l-5-4.5H3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M15.5 9a4.5 4.5 0 0 1 0 6M18.5 6.5a8 8 0 0 1 0 11"/></svg>
     <svg class="i-off" viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="currentColor" d="M3 9.5h4l5-4.5v14l-5-4.5H3z"/><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="m16 9.5 5 5m0-5-5 5"/></svg>
@@ -1026,12 +1024,10 @@ def main():
     for name in STATIC:
         src = os.path.join(ROOT, name)
         (shutil.copytree if os.path.isdir(src) else shutil.copy2)(src, os.path.join(out, name))
-    for track in MUSIC.values():  # only the music that's in use
-        src = os.path.join(ROOT, 'music', track['file'])
-        if not os.path.isfile(src):
-            raise SystemExit(f'data/music.js: no music/{track["file"]}')
-        os.makedirs(os.path.join(out, 'music'), exist_ok=True)
-        shutil.copy2(src, os.path.join(out, 'music', track['file']))
+    if MEDIA_BASE != MEDIA['base']:  # the details windows on the list use the same copy
+        path = os.path.join(out, 'data', 'media.js')
+        text = open(path, encoding='utf-8').read().replace(json.dumps(MEDIA['base']), json.dumps(MEDIA_BASE), 1)
+        open(path, 'w', encoding='utf-8').write(text)
 
     share_dir = os.path.join(out, 'assets', 'share')
     os.makedirs(share_dir)

@@ -18,3 +18,8 @@ desktop.ini
 
 # Built site (tools/build_pages.py); GitHub Actions builds its own on deploy
 _site/
+
+# Game-page music as downloaded, and the media repository's working copy (rikuwru/recomphaven-media,
+# data/media.js). Neither belongs in this repository.
+music/
+media/

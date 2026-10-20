@@ -69,6 +69,19 @@ Every game gets a page at `recomphaven.com/games/<name>/`, linked from its detai
 
 None of this is committed: it's rebuilt on every deploy, so it follows the data. `_site/` is in `.gitignore`.
 
+### Backdrops and theme music
+
+A-tier and S-tier games have a few pictures drifting and fading behind their page and their details window, and their game page plays the game's main theme quietly, with a mute button. The files are in a separate public repo, [rikuwru/recomphaven-media](https://github.com/rikuwru/recomphaven-media), published by GitHub Pages, so a takedown notice there can't take this site down with it. `data/media.js` lists each game's pictures (with the part of each kept in view in small windows) and its track.
+
+To add or change a game's media:
+
+1. Put the pictures in `media/backdrops/<game page name>/` (a clone of the media repo) and the downloaded song in `music/`. Both folders are ignored here.
+2. Add the game to `data/media.js`: its pictures, and for music the downloaded file as `source`, the published name as `file`, a `title` and a `credit`.
+3. Run `.venv/Scripts/python tools/shrink_music.py --only <game page name>`. It writes a 96 kbps copy to `media/music/` and sets the track's volume so every game plays at about the same level. It needs `pip install miniaudio lameenc av` once.
+4. Commit and push the media repo, then this one.
+
+To try it before pushing, serve the media folder (`python -m http.server 8767 -d media`) and build with `RH_MEDIA_BASE=http://127.0.0.1:8767/`.
+
 ## Latest releases and trending
 
 The front page opens with two panels, **Latest releases** and **Trending releases**.

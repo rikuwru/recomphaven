@@ -432,7 +432,13 @@
       try {
         if (ctx && ctx.state !== 'running') await ctx.resume();
         await audio.play();
-      } catch {
+      } catch (err) {
+        // Anything but "wait for a click" means the track can't play (gone from the media
+        // repository, say), so the button goes rather than asking for a click forever.
+        if (err && err.name !== 'NotAllowedError') {
+          music.hidden = true;
+          GESTURES.forEach((t) => document.removeEventListener(t, firstGesture));
+        }
         return false;
       }
       waiting(false);
@@ -450,7 +456,7 @@
     }
     // Plays now if the browser allows it, or else waits for a click or key press, saying so.
     const playOrWait = () => play(false).then((ok) => {
-      if (ok) return;
+      if (ok || music.hidden) return;
       waiting(true);
       listen();
     });
