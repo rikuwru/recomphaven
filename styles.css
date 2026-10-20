@@ -32,6 +32,8 @@
   --accent: #3d4ad0;
   --accent-soft: #e2e5ff;
   --on-accent: #ffffff;
+  --rate: #a35a54;
+  --on-rate: #ffffff;
   --ok: #1e8549;
   --beta: #0a7a7a;
   --warn: #9e640a;
@@ -65,6 +67,8 @@
     --accent: #8f9aff;
     --accent-soft: #252b52;
     --on-accent: #0e1017;
+    --rate: #d9928b;
+    --on-rate: #0e1017;
     --ok: #4cc47f;
     --beta: #3fc7c1;
     --warn: #e3a63c;
@@ -88,6 +92,8 @@
   --accent: #8f9aff;
   --accent-soft: #252b52;
   --on-accent: #0e1017;
+  --rate: #d9928b;
+  --on-rate: #0e1017;
   --ok: #4cc47f;
   --beta: #3fc7c1;
   --warn: #e3a63c;
@@ -212,8 +218,6 @@ button, input, select { font: inherit; color: inherit; }
   .submit-btn span { display: none; }
 }
 
-.d-correct { margin-left: auto; align-self: center; font-size: 0.85rem; color: var(--muted); }
-.d-correct:hover { color: var(--accent); }
 
 .icon-btn {
   flex: none;
@@ -757,6 +761,8 @@ button, input, select { font: inherit; color: inherit; }
   cursor: pointer;
 }
 .btn--ghost { background: transparent; color: var(--accent); }
+/* Rate and comment, Game page: a muted red so they stand out next to the repository button. */
+.btn--rate { border-color: var(--rate); background: var(--rate); color: var(--on-rate); }
 .btn:hover { filter: brightness(1.08); }
 
 /* ── Legend ───────────────────────────────────────────── */
@@ -1035,8 +1041,6 @@ dialog::backdrop { background: var(--backdrop); }
 }
 .d-compare strong { color: var(--accent); white-space: nowrap; }
 .d-compare:hover { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
-.d-minor { display: flex; flex-wrap: wrap; gap: 4px 16px; margin-left: auto; align-self: center; }
-.d-minor .d-correct { margin-left: 0; }
 
 /* ── What's new: latest releases and trending ─────────── */
 
@@ -1343,14 +1347,12 @@ dialog::backdrop { background: var(--backdrop); }
   .masthead__actions .icon-btn { width: 40px; height: 40px; }
   .submit-btn { width: 40px; height: 40px; padding: 0; justify-content: center; }
   .submit-btn span { display: none; }
-  .d-correct { margin-left: 0; flex-basis: 100%; }
   .cover--lg { width: 88px; height: 88px; }
   .cover--lg.cover--none { font-size: 1.8rem; }
   .d-head { flex-direction: column; gap: 14px; }
   .d-cover { width: auto; }
   .d-cover img { max-width: min(220px, 70vw); max-height: 240px; }
   .d-compare { flex-wrap: wrap; }
-  .d-minor { margin-left: 0; flex-basis: 100%; }
   .gp-hero { flex-direction: column; align-items: flex-start; gap: 16px; }
   .gp-hero .d-cover img { max-width: min(200px, 60vw); max-height: 240px; }
   .gp-pick { grid-template-columns: auto minmax(0, 1fr); padding: 16px; }

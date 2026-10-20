@@ -703,12 +703,10 @@
       <div class="d-links">
         ${e.repo ? `<a class="btn" href="${esc(e.repo)}" target="_blank" rel="noopener" data-visit="${esc(e.id)}">Open repository ↗</a>` : ''}
         ${e.website ? `<a class="btn btn--ghost" href="${esc(e.website)}" target="_blank" rel="noopener" data-visit="${esc(e.id)}">Project website ↗</a>` : ''}
+        ${COMMENTS_ON ? `<a class="btn btn--rate" href="games/${slug}/#comments">Rate and comment</a>` : ''}
+        ${siblings > 1 ? '' : `<a class="btn btn--rate" href="games/${slug}/">Game page</a>`}
         <a class="btn btn--ghost" href="${esc(correctionUrl(e))}" target="_blank" rel="noopener" title="Something wrong or out of date? Opens the feedback form on GitHub with this game filled in">${PENCIL}Suggest a correction</a>
         ${MAIL_API ? `<button class="btn btn--ghost" type="button" data-follow-toggle aria-expanded="false" aria-controls="d-follow">${BELL}Get update emails</button>` : ''}
-        <span class="d-minor">
-          ${COMMENTS_ON ? `<a class="d-correct" href="games/${slug}/#comments">Rate and comment</a>` : ''}
-          ${siblings > 1 ? '' : `<a class="d-correct" href="games/${slug}/">Game page</a>`}
-        </span>
         ${MAIL_API ? followForm('d-follow', e) : ''}
       </div>`;
 
