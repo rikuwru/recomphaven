@@ -240,6 +240,10 @@ def main():
     if targets and not checked and errors:
         sys.exit('Every request failed; nothing written.')
 
+    # An entry added by hand without a date gets today's, for "Recently added" and the feed of them.
+    for entry in entries:
+        entry.setdefault('added', today.isoformat())
+
     old_snapshot = meta.get('snapshot')
     meta['snapshot'] = today.isoformat()
     new_text = dump(head, meta, entries)

@@ -190,6 +190,10 @@ The script reads the file names on each project's newest GitHub release (for exa
 
 If it gets one wrong, set `platforms` yourself and `"platformsFrom": "manual"`; the script never changes those.
 
+**Planned for.** `planned` lists the systems a project says it's coming to next, shown as outlined chips under "Runs on". `tools/detect_planned.py` reads each README and the notes of the newest release for a system named near words of a plan ("Linux is next", "macOS and Switch are planned", "Android: in progress"), skipping turned-down or hedged ones ("no plans for macOS", "maybe Android") and systems it already runs on. The nightly workflow rereads a project after it's pushed to or puts out a release (`data/planned-checks.json`). To set one by hand, add `"plannedFrom": "manual"`.
+
+**Recently added.** `added` is the day a project joined Recomp Haven (backfilled from this repo's history). The list's "Recently added" sort and the `added.xml` feed go by it; the nightly refresh fills in the day for an entry added without one.
+
 ## Keyboard, mouse and mod managers
 
 Two "Must have" chips read tags in each entry's `features`:

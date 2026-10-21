@@ -544,6 +544,9 @@ button, input, select { font: inherit; color: inherit; }
   font-size: 0.84rem; font-weight: 600;
 }
 .os-chip .os-icon { width: 13px; height: 13px; }
+/* Planned for: what a project says is coming next (planned, tools/detect_planned.py), outlined. */
+.os-chip--planned { background: transparent; border: 1px dashed var(--line); color: var(--muted); padding: 2px 9px 2px 7px; }
+.os-plan { display: grid; gap: 4px; margin-top: 8px; }
 .os-note { display: block; margin-top: 5px; }
 .facts .fact--wide { grid-column: span 2; }
 
@@ -1284,6 +1287,7 @@ dialog::backdrop { background: var(--backdrop); }
   will-change: opacity, transform;
 }
 .backdrop__slide.is-on { opacity: 1; }
+.backdrop__slide.is-first { transition-duration: 1.2s; }  /* the first picture, once it has loaded */
 .backdrop__slide.is-drifting { animation: backdrop-drift 14s linear forwards; }
 @keyframes backdrop-drift {
   from { transform: translateX(3%) scale(1.03); }

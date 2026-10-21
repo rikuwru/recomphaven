@@ -45,5 +45,8 @@ window.RECOMPHAVEN_CREDITS = [
   {"name": "sackchief", "site": "github", "for": "Corrected the Dragon Quest IX listing"},
   {"name": "Graine25", "site": "reddit", "for": "Suggested Spider-Man: Edge of Time for S tier and the Blue Dragon update"},
   {"name": "bigmouthprickfromIV", "site": "github", "for": "Submitted ReStreet, the FIFA Street (2012) recomp"},
-  {"name": "PFLI2", "site": "github", "for": "Prompted an update to the Castlevania: Symphony of the Night listing"}
+  {"name": "PFLI2", "site": "github", "for": "Prompted an update to the Castlevania: Symphony of the Night listing"},
+  {"name": "Flippage", "site": "github", "for": "Submitted the Gears of War 2 PC port"},
+  {"name": "lotushomerun", "site": "github", "for": "Submitted Forza Motorsport 2 ReGPU"},
+  {"name": "NeminiNomen", "site": "github", "for": "Suggested \"Planned for\" platforms, the \"Recently added\" sort and its RSS feed"}
 ];

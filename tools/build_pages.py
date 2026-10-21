@@ -9,6 +9,7 @@ It copies the static files, then generates:
   the same kind of image for the front page.
 - releases/index.html and feed.xml: every project's latest release, newest
   first, as a page and as an RSS feed.
+- added.xml: the projects most recently added to Recomp Haven, as an RSS feed.
 - sitemap.xml and robots.txt.
 
 Usage:
@@ -237,6 +238,14 @@ def os_icon(k):
     return f'<svg class="os-icon" viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="{OS[k]["path"]}"/></svg>'
 
 
+def planned_html(e):
+    """The systems a project says it's coming to next (tools/detect_planned.py), under Runs on."""
+    if not e.get('planned'):
+        return ''
+    chips = ''.join(f'<span class="os-chip os-chip--planned">{os_icon(k)}{OS[k]["label"]}</span>' for k in e['planned'])
+    return f'<span class="os-plan"><span class="gp-k">Planned for</span><span class="os-chips">{chips}</span></span>'
+
+
 def stage_pill(e):
     return f'<span class="stage" data-stage="{e["stage"]}">{esc(STAGES[e["stage"]]["label"])}</span>'
 
@@ -247,10 +256,11 @@ def backdrop_html(slug):
     pics = (MEDIA['games'].get(slug) or {}).get('backdrop') or []
     if not pics:
         return ''
-    slides = ''.join(f'<div class="backdrop__slide{" is-on" if i == 0 else ""}" style="background-image:'
+    # All start hidden: game.js fades the first in once it has loaded.
+    slides = ''.join(f'<div class="backdrop__slide" style="background-image:'
                      f'url(&quot;{esc(MEDIA_BASE)}backdrops/{quote(slug)}/{quote(p["file"])}&quot;);'
                      f'background-position:{esc(p.get("focus") or "center")}"></div>'
-                     for i, p in enumerate(pics))
+                     for p in pics)
     return f'<div class="backdrop" aria-hidden="true">{slides}</div>\n'
 
 
@@ -364,9 +374,9 @@ def card(e, game, rows):
                 note = PLATFORM_SOURCE.get(e.get('platformsFrom'))
                 chips = ''.join(f'<span class="os-chip">{os_icon(k)}{OS[k]["label"]}</span>' for k in e['platforms'])
                 title = f' title="{esc(note)}"' if note else ''
-                cells.append(fact('Runs on', f'<span class="os-chips"{title}>{chips}</span>'))
+                cells.append(fact('Runs on', f'<span class="os-chips"{title}>{chips}</span>' + planned_html(e)))
             else:
-                cells.append(fact('Runs on', muted('Not stated by the project')))
+                cells.append(fact('Runs on', muted('Not stated by the project') + planned_html(e)))
         elif row == 'features':
             feats = ''.join(f'<span class="feat">{esc(FEATURES.get(f, f))}</span>' for f in e.get('features') or [])
             cells.append(fact('Features', f'<div class="feats">{feats}</div>' if feats else muted('None listed')))
@@ -790,13 +800,40 @@ def feed(entries, limit=50):
     <pubDate>{format_datetime(when)}</pubDate>
     <description>{esc(about)}</description>
   </item>''')
+    return rss(items, 'Recomp Haven: latest releases', f'{SITE}/releases/', 'feed.xml',
+               'New releases of game recompilations, decompilations and native ports, from Recomp Haven.')
+
+
+def added_feed(entries, limit=50):
+    """RSS 2.0 of the projects most recently added to Recomp Haven (their "added" day), newest first."""
+    items = []
+    newest = sorted((e for e in entries if e.get('added')), key=lambda e: (e['added'], e.get('stars') or 0), reverse=True)
+    for e in newest[:limit]:
+        when = dt.datetime.fromisoformat(e['added']).replace(tzinfo=dt.timezone.utc)
+        c = console_of(e['console'])
+        about = (f'<p><strong>{esc(e["title"])}</strong> ({esc(c["label"])}): {e["quality"]} tier '
+                 f'({esc(TIERS[e["quality"]]["label"])}), {esc(STAGES[e["stage"]]["label"].lower())}, '
+                 f'by {esc(e.get("team") or e["project"])}.</p>'
+                 + (f'<p>{esc(e["summary"])}</p>' if e.get('summary') else ''))
+        items.append(f'''  <item>
+    <title>{esc(e['project'])} · {esc(e['title'])}</title>
+    <link>{SITE}/games/{slug_of(e['title'])}/</link>
+    <guid isPermaLink="false">recomphaven:added:{esc(e['id'])}</guid>
+    <pubDate>{format_datetime(when)}</pubDate>
+    <description>{esc(about)}</description>
+  </item>''')
+    return rss(items, 'Recomp Haven: newly added', f'{SITE}/?sort=added', 'added.xml',
+               'Game recompilations, decompilations and native ports just added to Recomp Haven.')
+
+
+def rss(items, title, link, name, description):
     return f'''<?xml version="1.0" encoding="UTF-8"?>
 <rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
 <channel>
-  <title>Recomp Haven: latest releases</title>
-  <link>{SITE}/releases/</link>
-  <atom:link href="{SITE}/feed.xml" rel="self" type="application/rss+xml"/>
-  <description>New releases of game recompilations, decompilations and native ports, from Recomp Haven.</description>
+  <title>{esc(title)}</title>
+  <link>{esc(link)}</link>
+  <atom:link href="{SITE}/{name}" rel="self" type="application/rss+xml"/>
+  <description>{esc(description)}</description>
   <language>en</language>
   <lastBuildDate>{format_datetime(dt.datetime.now(dt.timezone.utc))}</lastBuildDate>
 ''' + '\n'.join(items) + '''
@@ -1048,6 +1085,8 @@ def main():
         f.write(releases_page(entries, home_url, snapshot))
     with open(os.path.join(out, 'feed.xml'), 'w', encoding='utf-8', newline='\n') as f:
         f.write(feed(entries))
+    with open(os.path.join(out, 'added.xml'), 'w', encoding='utf-8', newline='\n') as f:
+        f.write(added_feed(entries))
 
     for game in games:
         img = os.path.join(share_dir, game['slug'] + '.jpg')

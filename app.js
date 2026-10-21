@@ -42,6 +42,7 @@
     updated: { label: 'Last activity', dir: 'desc', get: (e) => e.updated, dirs: ['Oldest first', 'Newest first'] },
     release: { label: 'Latest release', dir: 'desc', get: (e) => e.versionDate, dirs: ['Oldest first', 'Newest first'] },
     started: { label: 'Project start', dir: 'desc', get: (e) => e.started, dirs: ['Oldest first', 'Newest first'] },
+    added: { label: 'Recently added', dir: 'desc', get: (e) => e.added, dirs: ['Oldest first', 'Newest first'] },
     stars: { label: 'GitHub stars', dir: 'desc', get: (e) => e.stars, dirs: ['Fewest first', 'Most first'] },
     score: { label: 'User score', dir: 'desc', get: (e) => e.userScore, dirs: ['Lowest first', 'Highest first'] },
     trending: { label: 'Trending', dir: 'desc', get: (e) => trendOf(e), dirs: ['Fewest first', 'Most first'] },
@@ -684,6 +685,7 @@
           ? `<span class="os-chips">${e.platforms.map((k) => `<span class="os-chip">${osIcon(k)}${OS[k].label}</span>`).join('')}</span>${
             PLATFORM_SOURCE[e.platformsFrom] ? `<span class="small muted os-note">${PLATFORM_SOURCE[e.platformsFrom]}</span>` : ''}`
           : '<span class="muted">Not stated by the project</span>'}</dd></div>
+        ${(e.planned || []).length ? `<div class="fact--wide"><dt>Planned for</dt><dd><span class="os-chips">${e.planned.map((k) => `<span class="os-chip os-chip--planned">${osIcon(k)}${OS[k].label}</span>`).join('')}</span><span class="small muted os-note">What the project says is coming next</span></dd></div>` : ''}
         ${fact('Latest release', e.version || e.versionDate ? `<span class="mono">${esc(e.version || 'Release')}</span>${e.versionDate ? `<br><span class="small muted">${esc(fmtDate(e.versionDate))}</span>` : ''}` : '<span class="muted">No release yet</span>')}
         ${fact('Last activity', `${actTag(e)}${e.updated ? `<br><span class="small muted">${esc(fmtDate(e.updated))}</span>` : ''}`)}
         ${fact('User score', e.userScore != null
@@ -736,24 +738,41 @@
     if (slug === backdropSlug && pics.length) return;  // the same game: keep it running
     clearInterval(backdropTimer);
     backdropSlug = slug;
-    box.innerHTML = pics.map((p, i) => `<div class="backdrop__slide${i ? '' : ' is-on'}" style="background-image:url(&quot;${esc(MEDIA.base)}backdrops/${encodeURIComponent(slug)}/${encodeURIComponent(p.file)}&quot;);background-position:${esc(p.focus || 'center')}"></div>`).join('');
+    const url = (p) => `${MEDIA.base}backdrops/${encodeURIComponent(slug)}/${encodeURIComponent(p.file)}`;
+    box.innerHTML = pics.map((p) => `<div class="backdrop__slide" style="background-image:url(&quot;${esc(url(p))}&quot;);background-position:${esc(p.focus || 'center')}"></div>`).join('');
     const slides = [...box.children];
-    if (!slides.length || calm) return;
+    if (!slides.length) return;
     const drift = (s) => {
       s.classList.remove('is-drifting');
       void s.offsetWidth;  // starts the drift over
       s.classList.add('is-drifting');
     };
+    // The first picture waits until it has loaded, then fades in and starts drifting, so it
+    // doesn't pop in late. Another game opened meanwhile has its own pictures.
     let at = 0;
-    drift(slides[0]);
-    if (slides.length > 1) {
-      backdropTimer = setInterval(() => {
-        slides[at].classList.remove('is-on');  // fades out, still drifting
-        at = (at + 1) % slides.length;
-        drift(slides[at]);
-        slides[at].classList.add('is-on');
-      }, 9000);
-    }
+    let begun = false;
+    const begin = () => {
+      if (begun || backdropSlug !== slug || !slides[0].isConnected) return;
+      begun = true;
+      slides[0].classList.add('is-first');  // a quicker fade than between pictures
+      void slides[0].offsetWidth;
+      slides[0].classList.add('is-on');
+      setTimeout(() => slides[0].classList.remove('is-first'), 1500);
+      if (calm) return;
+      drift(slides[0]);
+      if (slides.length > 1) {
+        backdropTimer = setInterval(() => {
+          slides[at].classList.remove('is-on');  // fades out, still drifting
+          at = (at + 1) % slides.length;
+          drift(slides[at]);
+          slides[at].classList.add('is-on');
+        }, 9000);
+      }
+    };
+    const first = new Image();
+    first.onload = first.onerror = begin;
+    first.src = url(pics[0]);
+    if (first.complete) begin();
   }
 
   // Opening a game's details adds a history entry (#id), so the browser's or phone's Back button
@@ -836,7 +855,8 @@
     (p.get('has') || '').split(',').filter((f) => FEATURE_FILTERS[f]).forEach((f) => state.features.add(f));
     state.hideAI = p.get('noai') === '1';
     if (SORTS[p.get('sort')]) state.sort = p.get('sort');
-    if (['asc', 'desc'].includes(p.get('dir'))) state.dir = p.get('dir');
+    // A sort given without a direction goes its own way: ?sort=added shows the newest first.
+    state.dir = ['asc', 'desc'].includes(p.get('dir')) ? p.get('dir') : SORTS[state.sort].dir;
   }
 
   // ── Theme ────────────────────────────────────────────────

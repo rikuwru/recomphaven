@@ -343,22 +343,38 @@
   // first. It stays on the first picture for people who ask for less motion.
   const slides = [...document.querySelectorAll('.backdrop__slide')];
   const calm = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  if (slides.length && !calm) {
+  if (slides.length) {
     const drift = (s) => {
       s.classList.remove('is-drifting');
       void s.offsetWidth;  // starts the drift over
       s.classList.add('is-drifting');
     };
+    // The first picture waits until it has loaded, then fades in and starts drifting, so it
+    // doesn't pop in late.
     let at = 0;
-    drift(slides[0]);
-    if (slides.length > 1) {
-      setInterval(() => {
-        slides[at].classList.remove('is-on');  // fades out, still drifting
-        at = (at + 1) % slides.length;
-        drift(slides[at]);
-        slides[at].classList.add('is-on');
-      }, 9000);
-    }
+    let begun = false;
+    const begin = () => {
+      if (begun) return;
+      begun = true;
+      slides[0].classList.add('is-first');  // a quicker fade than between pictures
+      void slides[0].offsetWidth;
+      slides[0].classList.add('is-on');
+      setTimeout(() => slides[0].classList.remove('is-first'), 1500);
+      if (calm) return;
+      drift(slides[0]);
+      if (slides.length > 1) {
+        setInterval(() => {
+          slides[at].classList.remove('is-on');  // fades out, still drifting
+          at = (at + 1) % slides.length;
+          drift(slides[at]);
+          slides[at].classList.add('is-on');
+        }, 9000);
+      }
+    };
+    const first = new Image();
+    first.onload = first.onerror = begin;
+    first.src = (getComputedStyle(slides[0]).backgroundImage.match(/url\(["']?(.*?)["']?\)/) || [])[1] || '';
+    if (first.complete) begin();
   }
 
   // A game page's music (music_html() in tools/build_pages.py): it fades in, plays at a gentle

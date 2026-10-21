@@ -54,6 +54,10 @@ jobs:
       - name: Detect platforms for new entries and new releases
         run: python tools/detect_platforms.py
 
+      # After the platforms, so a system that now has a download stops counting as planned.
+      - name: Detect the systems projects say are coming next
+        run: python tools/detect_planned.py
+
       - name: Detect keyboard/mouse support and mod managers for new entries
         run: python tools/detect_features.py
 
@@ -82,13 +86,13 @@ jobs:
 
       - name: Commit the data and covers if they changed
         run: |
-          if [ -z "$(git status --porcelain -- data/recomps.js data/stars-history.json data/rom-checks.json assets/covers)" ]; then
+          if [ -z "$(git status --porcelain -- data/recomps.js data/stars-history.json data/rom-checks.json data/planned-checks.json assets/covers)" ]; then
             echo "Nothing changed."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/recomps.js data/stars-history.json data/rom-checks.json assets/covers
+          git add data/recomps.js data/stars-history.json data/rom-checks.json data/planned-checks.json assets/covers
           git commit -m "Refresh GitHub stats and covers ($(date -u +%Y-%m-%d))"
           git pull --rebase
           git push
