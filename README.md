@@ -75,12 +75,13 @@ A-tier and S-tier games have a few pictures drifting and fading behind their pag
 
 To add or change a game's media:
 
-1. Put the pictures in `media/backdrops/<game page name>/` (a clone of the media repo) and the downloaded song in `music/`. Both folders are ignored here.
+1. Put the pictures, sharp, in `backdrop-sources/<game page name>/` and the downloaded song in `music/`. Both folders are ignored here; `media/` is a clone of the media repo.
 2. Add the game to `data/media.js`: its pictures, and for music the downloaded file as `source`, the published name as `file`, a `title` and a `credit`.
-3. Run `.venv/Scripts/python tools/shrink_music.py --only <game page name>`. It writes a 96 kbps copy to `media/music/` and sets the track's volume so every game plays at about the same level. It needs `pip install miniaudio lameenc av` once.
-4. Commit and push the media repo, then this one.
+3. Run `.venv/Scripts/python tools/blur_backdrops.py --only <game page name>`. It writes small, already blurred copies to `media/backdrops/`, so browsers only have to slide and fade them (a live CSS blur made some browsers, Chrome especially, drop frames).
+4. Run `.venv/Scripts/python tools/shrink_music.py --only <game page name>`. It writes a 96 kbps copy to `media/music/` and sets the track's volume so every game plays at about the same level. It needs `pip install miniaudio lameenc av` once.
+5. Commit and push the media repo, then this one.
 
-To try it before pushing, serve the media folder (`python -m http.server 8767 -d media`) and build with `RH_MEDIA_BASE=http://127.0.0.1:8767/`.
+To try it before pushing, serve the media folder on port 8767 and build with `RH_MEDIA_BASE=http://127.0.0.1:8767/`. The server has to send `Access-Control-Allow-Origin: *`, as GitHub Pages does, or the music button hides itself: `python -m http.server` alone doesn't, so add that header.
 
 ## Latest releases and trending
 

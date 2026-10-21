@@ -23,3 +23,5 @@ _site/
 # data/media.js). Neither belongs in this repository.
 music/
 media/
+# The backdrop pictures as found, before tools/blur_backdrops.py blurs them into media/.
+backdrop-sources/

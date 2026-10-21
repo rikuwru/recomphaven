@@ -761,8 +761,11 @@
       if (calm) return;
       drift(slides[0]);
       if (slides.length > 1) {
+        pics.slice(1).forEach((p) => { new Image().src = url(p); });  // loaded before their turn
         backdropTimer = setInterval(() => {
-          slides[at].classList.remove('is-on');  // fades out, still drifting
+          const out = slides[at];
+          out.classList.remove('is-on');  // fades out, still drifting, then rests hidden
+          setTimeout(() => { if (!out.classList.contains('is-on')) out.classList.remove('is-drifting'); }, 2600);
           at = (at + 1) % slides.length;
           drift(slides[at]);
           slides[at].classList.add('is-on');

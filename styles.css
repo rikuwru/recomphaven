@@ -1275,17 +1275,19 @@ dialog::backdrop { background: var(--backdrop); }
 
 /* A game page's backdrop (backdrop_html() in tools/build_pages.py): its pictures out of focus
    behind the page, under a veil of the page colour. game.js fades from one to the next while
-   each drifts left and zooms in; the slides overhang the screen so the blur's soft edges and the
-   drift stay out of sight. */
+   each drifts left and zooms in; the slides overhang the screen so the drift stays out of sight.
+   The pictures come already blurred (tools/blur_backdrops.py): a CSS blur here would be redone
+   every frame, which some browsers can't keep up with. Only the pictures on screen (showing, or
+   fading out while still drifting) get a layer of their own; the rest wait hidden. */
 .backdrop { position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
 .backdrop__slide {
-  position: absolute; inset: -8%;
+  position: absolute; inset: -5%;
   background: center / cover no-repeat;
-  filter: blur(5px);
   opacity: 0;
+  visibility: hidden;
   transition: opacity 2.5s ease-in-out;
-  will-change: opacity, transform;
 }
+.backdrop__slide.is-on, .backdrop__slide.is-drifting { visibility: visible; will-change: opacity, transform; }
 .backdrop__slide.is-on { opacity: 1; }
 .backdrop__slide.is-first { transition-duration: 1.2s; }  /* the first picture, once it has loaded */
 .backdrop__slide.is-drifting { animation: backdrop-drift 14s linear forwards; }
@@ -1318,8 +1320,7 @@ dialog.has-backdrop .d-body { position: relative; z-index: 1; min-height: 0; ove
   display: inline-flex; align-items: center; gap: 8px;
   height: 40px; padding: 0 14px 0 12px;
   border: 1px solid var(--line); border-radius: 999px;
-  background: color-mix(in srgb, var(--surface) 88%, transparent);
-  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  background: color-mix(in srgb, var(--surface) 95%, transparent);  /* no backdrop blur: it's redone every frame over the moving pictures */
   box-shadow: var(--shadow);
   color: var(--fg); font: inherit; font-size: 0.85rem; font-weight: 600;
   cursor: pointer;

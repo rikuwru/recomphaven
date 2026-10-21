@@ -363,17 +363,21 @@
       if (calm) return;
       drift(slides[0]);
       if (slides.length > 1) {
+        slides.slice(1).forEach((s) => { new Image().src = urlOf(s); });  // loaded before their turn
         setInterval(() => {
-          slides[at].classList.remove('is-on');  // fades out, still drifting
+          const out = slides[at];
+          out.classList.remove('is-on');  // fades out, still drifting, then rests hidden
+          setTimeout(() => { if (!out.classList.contains('is-on')) out.classList.remove('is-drifting'); }, 2600);
           at = (at + 1) % slides.length;
           drift(slides[at]);
           slides[at].classList.add('is-on');
         }, 9000);
       }
     };
+    const urlOf = (s) => (getComputedStyle(s).backgroundImage.match(/url\(["']?(.*?)["']?\)/) || [])[1] || '';
     const first = new Image();
     first.onload = first.onerror = begin;
-    first.src = (getComputedStyle(slides[0]).backgroundImage.match(/url\(["']?(.*?)["']?\)/) || [])[1] || '';
+    first.src = urlOf(slides[0]);
     if (first.complete) begin();
   }
 
