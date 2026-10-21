@@ -701,7 +701,7 @@ def playthrough_html(game):
             f'Watch on YouTube ↗</a>{label}</figcaption>\n'
             f'    </figure>')
     return ('  <section class="gp-video" id="playthrough" aria-labelledby="playthrough-title">\n'
-            '    <h2 id="playthrough-title">Featured playthrough</h2>\n    '
+            '    <h2 id="playthrough-title">Re: Playthrough</h2>\n    '
             + '\n    '.join(figures) + '\n  </section>\n')
 
 

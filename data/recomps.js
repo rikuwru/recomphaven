@@ -27,7 +27,7 @@
  *                the one before it; only once 5+ people have rated on each side
  *   visitsWeek   people who opened the project on RecompHaven in the last 7 days
  *                (tools/track_visits.py); Trending ranks by it
- *   playthrough  a YouTube link shown as the "Featured playthrough" (picked by hand)
+ *   playthrough  a YouTube link shown as "Re: Playthrough" (picked by hand)
  *   features     widescreen | high-fps | mods | ray-tracing | multiplayer | online | launcher | steam-deck
  *                | keyboard-mouse | keyboard | mod-manager  (see tools/detect_features.py)
  *   platforms    systems it runs on: windows | linux | macos | android | switch (tools/detect_platforms.py)

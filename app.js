@@ -830,7 +830,7 @@
         ${fact('Original developer', esc(e.developer || ''))}
       </dl>
       ${e.summary ? `<div class="d-section"><h3>About this recomp</h3><p>${esc(e.summary)}</p></div>` : ''}
-      ${youtubeId(e.playthrough) ? `<div class="d-section"><h3>Featured playthrough</h3>${videoHtml(e)}</div>` : ''}
+      ${youtubeId(e.playthrough) ? `<div class="d-section"><h3>Re: Playthrough</h3>${videoHtml(e)}</div>` : ''}
       ${(e.features || []).length ? `<div class="d-section"><h3>Features</h3><div class="feats">${e.features.map((f) => `<span class="feat">${esc(FEATURES[f] || f)}</span>`).join('')}</div></div>` : ''}
       ${e.requires ? `<div class="d-section"><h3>What you need</h3><p class="d-note">${esc(e.requires)}</p></div>` : ''}
       ${e.ai ? '<div class="d-section"><p class="d-note">This project discloses that a substantial share of its code was written with AI tools.</p></div>' : ''}
