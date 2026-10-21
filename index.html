@@ -64,7 +64,10 @@
 </header>
 
 <main>
-  <!-- feed.xml and releases/ are made by tools/build_pages.py, so they only exist on the built site. -->
+  <!-- feed.xml, added.xml and releases/ are made by tools/build_pages.py, so they only exist on the built site. -->
+  <section class="wrap spot-wrap" aria-label="Trending releases" hidden>
+    <div id="spot" class="spot" aria-roledescription="carousel" aria-label="Trending releases"></div>
+  </section>
   <section class="wrap pulse" aria-label="What's new">
     <div class="pulse__panel">
       <div class="pulse__head">
@@ -77,10 +80,12 @@
     </div>
     <div class="pulse__panel">
       <div class="pulse__head">
-        <h2 title="The projects people opened most on Recomp Haven over the last 3 days, recounted every night">Trending releases</h2>
-        <button type="button" class="pulse__link" data-sort-trending>Sort by trending →</button>
+        <h2 title="The projects most recently added to Recomp Haven's catalogue">Newly added</h2>
+        <a class="pulse__link" href="added.xml" title="Subscribe to newly added projects with RSS">
+          <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><circle cx="5" cy="19" r="2.2" fill="currentColor"/><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>RSS</a>
+        <button type="button" class="pulse__link" data-sort-added>All newly added →</button>
       </div>
-      <ol id="trending-list" class="pulse__list"></ol>
+      <ol id="added-list" class="pulse__list"></ol>
     </div>
   </section>
 

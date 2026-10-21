@@ -48,5 +48,7 @@ window.RECOMPHAVEN_CREDITS = [
   {"name": "PFLI2", "site": "github", "for": "Prompted an update to the Castlevania: Symphony of the Night listing"},
   {"name": "Flippage", "site": "github", "for": "Submitted the Gears of War 2 PC port"},
   {"name": "lotushomerun", "site": "github", "for": "Submitted Forza Motorsport 2 ReGPU"},
-  {"name": "NeminiNomen", "site": "github", "for": "Suggested \"Planned for\" platforms, the \"Recently added\" sort and its RSS feed"}
+  {"name": "NeminiNomen", "site": "github", "for": "Suggested \"Planned for\" platforms, the \"Recently added\" sort and its RSS feed"},
+  {"name": "EuclidVsGauss", "site": "github", "for": "Submitted Hazard: Revenge, the Hazard decompilation"},
+  {"name": "phobos665", "site": "github", "for": "Updated the TimeSplitters 2 listing"}
 ];

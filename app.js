@@ -581,14 +581,17 @@
     }
   }
 
-  // ── What's new: latest releases and trending ─────────────
+  // ── What's new: the trending release, latest releases, newly added ──
 
   const LATEST = DATA.filter((e) => e.versionDate)
     .sort((a, b) => b.versionDate.localeCompare(a.versionDate) || (b.stars || 0) - (a.stars || 0))
     .slice(0, 5);
-  const TRENDING = DATA.filter((e) => trendOf(e) >= 2)
-    .sort((a, b) => trendOf(b) - trendOf(a) || (b.stars || 0) - (a.stars || 0))
+  // Newest additions to the catalogue first ("added", the day an entry went in); the same day by stars.
+  const NEWLY_ADDED = DATA.filter((e) => e.added)
+    .sort((a, b) => b.added.localeCompare(a.added) || (b.stars || 0) - (a.stars || 0))
     .slice(0, 5);
+  const TRENDING = DATA.filter((e) => trendOf(e) >= 2)
+    .sort((a, b) => trendOf(b) - trendOf(a) || (b.stars || 0) - (a.stars || 0));
 
   function pulseRow(e, sub, meta) {
     return `<li><button type="button" class="pulse__row" data-open="${esc(e.id)}">${coverTile(e, 'sm')}
@@ -600,13 +603,107 @@
     $('#latest-list').innerHTML = LATEST.map((e) => pulseRow(e,
       `${esc(e.project || '')} <span class="mono">${esc(e.version || '')}</span>`,
       `<span title="${esc(fmtDate(e.versionDate))}">${esc(relTime(e.versionDate))}</span>`)).join('');
-    $('#trending-list').innerHTML = TRENDING.length
-      ? TRENDING.map((e) => pulseRow(e, esc(e.project || ''), BY_VISITS
-        ? `<span title="People who opened this project on Recomp Haven in the last 3 days">${e.visitsWeek.toLocaleString('en')} visitors</span>`
-        : `<span title="GitHub stars gained in the last 7 days"><span class="gain">+${e.starsWeek.toLocaleString('en')}</span> stars</span>`)).join('')
-      : `<li class="pulse__empty">${DATA.some((e) => e.starsWeek != null)
-        ? 'A quiet week: no project has gained more than a star.'
-        : 'Trending shows up once the nightly update has counted this week’s stars.'}</li>`;
+    $('#added-list').innerHTML = NEWLY_ADDED.map((e) => pulseRow(e, esc(e.project || ''),
+      `<span title="Added to Recomp Haven on ${esc(fmtDate(e.added))}">${esc(relTime(e.added))}</span>`)).join('');
+    renderSpot();
+  }
+
+  // The top 5 trending projects, across both columns, one at a time: each over its first backdrop
+  // picture (data/media.js, already out of focus), or else its box art blurred. A picture fades in
+  // once it has loaded. The bar under the active game fills over 9 seconds and then the next game
+  // crossfades in; the arrows and bars move by hand. Pointing at the box, or keyboard focus in it,
+  // pauses it, and it doesn't move by itself for people who ask for less motion (the bar's
+  // animation is off, and its end is what moves it on). With nothing trending the box stays hidden.
+  const TRENDING_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7M14.5 7H21v6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const chevron = (d) => `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  function renderSpot() {
+    const top = TRENDING.slice(0, 5);
+    if (!top.length) return;
+    const box = $('#spot');
+    const many = top.length > 1;
+    const picOf = (e) => {
+      const slug = SLUG.get(e.id);
+      const pic = ((MEDIA.games[slug] || {}).backdrop || [])[0];
+      return pic
+        ? { url: `${MEDIA.base}backdrops/${encodeURIComponent(slug)}/${encodeURIComponent(pic.file)}`, focus: pic.focus || 'center' }
+        : e.cover ? { url: e.cover, focus: 'center', cover: true } : null;
+    };
+    const pics = top.map(picOf);
+    const slide = (e, i) => {
+      const c = consoleOf(e);
+      const stat = BY_VISITS
+        ? `<strong>${e.visitsWeek.toLocaleString('en')}</strong> visitors in the last 3 days`
+        : `<strong class="gain">+${e.starsWeek.toLocaleString('en')}</strong> GitHub stars this week`;
+      return `<div class="spot__slide" role="group" aria-roledescription="slide" aria-label="${i + 1} of ${top.length}: ${esc(e.title)}">
+        ${e.cover ? `<img class="spot__cover" src="${esc(e.cover)}" alt="Box art for ${esc(e.title)}" decoding="async"${i ? ' loading="lazy"' : ''}>` : coverTile(e, 'lg')}
+        <div class="spot__text">
+          <div class="d-head__meta spot__meta"><span class="spot__rank">#${i + 1}</span>${ctag(e)}<span>${esc(c.label)}</span>${e.year ? `<span>· ${e.year}</span>` : ''}${e.developer ? `<span>· ${esc(e.developer)}</span>` : ''}</div>
+          <h3 class="spot__title">${esc(e.title)}</h3>
+          <div class="d-head__meta spot__sub">${subline(e)}</div>
+          <div class="spot__facts">${tierTile(e)}${stagePill(e)}${e.version
+            ? `<span title="Latest release, ${esc(fmtDate(e.versionDate))}"><span class="mono">${esc(e.version)}</span> · ${esc(relTime(e.versionDate))}</span>` : ''}${osInline(e)}</div>
+        </div>
+        ${e.summary ? `<p class="spot__summary">${esc(e.summary)}</p>` : '<span></span>'}
+        <div class="spot__foot">
+          <a class="btn btn--rate" href="games/${SLUG.get(e.id)}/">Game page</a>
+          <span class="spot__stat">${stat}</span>
+        </div>
+      </div>`;
+    };
+    box.innerHTML = `
+      <div class="spot__bgs" aria-hidden="true">${pics.map((p) => (p
+        ? `<div class="spot__bg${p.cover ? ' spot__bg--cover' : ''}" style="background-position:${esc(p.focus)}"></div>` : '<div class="spot__bg"></div>')).join('')}</div>
+      <div class="spot__head">
+        <h2 class="spot__heading">${TRENDING_ICON}Trending releases</h2>
+        <button type="button" class="pulse__link" data-sort-trending>Sort by trending →</button>
+      </div>
+      <div class="spot__slides">${top.map(slide).join('')}</div>
+      ${many ? `<div class="spot__dots">${top.map((e, i) => `<button type="button" class="spot__dot" data-spot="${i}" aria-label="Show #${i + 1}, ${esc(e.title)}"><span class="spot__fill"></span></button>`).join('')}</div>
+      <button type="button" class="spot__arrow spot__arrow--prev" data-spot-step="-1" aria-label="Previous trending game">${chevron('M15 5l-7 7 7 7')}</button>
+      <button type="button" class="spot__arrow spot__arrow--next" data-spot-step="1" aria-label="Next trending game">${chevron('M9 5l7 7-7 7')}</button>` : ''}`;
+    $('.spot-wrap').hidden = false;
+
+    const bgs = [...box.querySelectorAll('.spot__bg')];
+    const slides = [...box.querySelectorAll('.spot__slide')];
+    const dots = [...box.querySelectorAll('.spot__dot')];
+    const load = (i) => {
+      const p = pics[i];
+      if (!p || bgs[i].dataset.loading) return;
+      bgs[i].dataset.loading = '1';
+      const img = new Image();
+      img.onload = () => {
+        bgs[i].style.backgroundImage = `url("${p.url}")`;
+        bgs[i].classList.add('is-loaded');
+      };
+      img.src = p.url;
+    };
+    let at = -1;
+    const show = (i) => {
+      i = (i + top.length) % top.length;
+      if (i === at) return;
+      at = i;
+      [bgs, slides].forEach((set) => set.forEach((el, k) => el.classList.toggle('is-on', k === i)));
+      dots.forEach((d, k) => {
+        d.classList.remove('is-on');
+        d.toggleAttribute('aria-current', k === i);
+      });
+      if (dots[i]) {
+        void dots[i].offsetWidth;  // starts its bar over
+        dots[i].classList.add('is-on');
+      }
+      load(i);
+      if (many) load((i + 1) % top.length);  // ready before its turn
+    };
+    show(0);
+    box.addEventListener('click', (ev) => {
+      const dot = ev.target.closest('[data-spot]');
+      const step = ev.target.closest('[data-spot-step]');
+      if (dot) show(+dot.dataset.spot);
+      else if (step) show(at + +step.dataset.spotStep);
+    });
+    box.addEventListener('animationend', (ev) => {
+      if (ev.target.classList.contains('spot__fill')) show(at + 1);
+    });
   }
 
   // ── Thanks (data/credits.js) ─────────────────────────────
@@ -960,15 +1057,18 @@
     openDetail(opener.dataset.open || opener.dataset.id);
   });
 
-  document.querySelector('.pulse').addEventListener('click', (ev) => {
-    const row = ev.target.closest('[data-open]');
-    if (row) {
-      openDetail(row.dataset.open);
-    } else if (ev.target.closest('[data-sort-trending]')) {
-      setSort('trending');
-      $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
-  });
+  for (const section of document.querySelectorAll('.spot-wrap, .pulse')) {
+    section.addEventListener('click', (ev) => {
+      const row = ev.target.closest('[data-open]');
+      const sort = ev.target.closest('[data-sort-trending], [data-sort-added]');
+      if (row) {
+        openDetail(row.dataset.open);
+      } else if (sort) {
+        setSort('sortTrending' in sort.dataset ? 'trending' : 'added');
+        $('#results').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+  }
 
   // Back and Forward: open or close the details to match the address. Set detailPushed first, so a
   // close caused by Back doesn't step back a second time.

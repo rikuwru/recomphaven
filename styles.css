@@ -1107,6 +1107,185 @@ dialog::backdrop { background: var(--backdrop); }
 .pulse__meta { font-size: 0.8rem; color: var(--muted); white-space: nowrap; text-align: right; }
 .pulse__empty { padding: 8px 10px 12px; color: var(--muted); font-size: 0.9rem; }
 
+/* Trending releases (renderSpot() in app.js): the top 5 in turn, across both columns, each over its
+   picture. Only the opacity changes, and the resting pictures and games are hidden, so it stays
+   light on every browser. The veil is the box's own colour, thick behind the words and thin on
+   the right, where the picture shows. */
+.spot-wrap { padding-top: 20px; }
+.spot-wrap:not([hidden]) + .pulse { padding-top: 14px; }
+.spot {
+  --spot-veil: 92%;
+  --spot-veil-mid: 82%;
+  --spot-veil-end: 38%;
+  position: relative;
+  display: grid;
+  gap: 10px;
+  padding: 14px 20px 6px;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.spot__bgs { position: absolute; inset: 0; overflow: hidden; }
+.spot__bgs::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg,
+    color-mix(in srgb, var(--surface) var(--spot-veil), transparent) 0%,
+    color-mix(in srgb, var(--surface) var(--spot-veil-mid), transparent) 55%,
+    color-mix(in srgb, var(--surface) var(--spot-veil-end), transparent) 100%);
+}
+.spot__bg {
+  position: absolute;
+  inset: 0;
+  background-size: cover;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 1.2s ease, visibility 0s 1.2s;
+}
+.spot__bg.is-on.is-loaded { opacity: 1; visibility: visible; transition: opacity 1.2s ease; }
+/* Box art is small: blown up and blurred a lot, so it reads as colour and shape. */
+.spot__bg--cover { inset: -40px; filter: blur(28px) saturate(1.25); }
+.spot__head { position: relative; display: flex; align-items: baseline; gap: 14px; }
+.spot__heading {
+  display: inline-flex; align-items: center; gap: 8px;
+  margin: 0 auto 0 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 1.25rem;
+  letter-spacing: 0.01em;
+  text-transform: uppercase;
+}
+.spot__heading svg { color: var(--accent); }
+/* Over the picture's bright side: a backing keeps it readable. */
+.spot__head .pulse__link {
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--surface) 88%, transparent);
+}
+.spot__slides { position: relative; display: grid; margin-inline: 48px; }
+.spot__slide {
+  grid-area: 1 / 1;
+  display: grid;
+  grid-template-columns: 150px minmax(0, 1fr);
+  grid-template-rows: auto auto 1fr;
+  column-gap: 22px;
+  row-gap: 10px;
+  align-items: start;
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.35s ease, visibility 0s 0.35s;
+}
+.spot__slide.is-on { opacity: 1; visibility: visible; transition: opacity 0.5s ease 0.3s; }
+.spot__cover, .spot__slide > .cover {
+  grid-row: 1 / 4;
+  align-self: center;
+  justify-self: center;
+}
+.spot__cover {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 150px;
+  max-height: 200px;
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.2), 0 6px 18px rgb(0 0 0 / 0.22);
+}
+.spot__text { display: grid; gap: 6px; min-width: 0; max-width: 720px; }
+.spot__rank { font-family: var(--font-display); font-weight: 900; font-size: 1rem; color: var(--accent); }
+.spot__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(1.6rem, 3.6vw, 2.2rem);
+  line-height: 1;
+  overflow-wrap: anywhere;
+}
+.spot__facts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-top: 2px; font-size: 0.88rem; }
+.spot__summary {
+  display: -webkit-box;
+  max-width: 720px;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  font-size: 0.92rem;
+  line-height: 1.45;
+}
+.spot__foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; align-self: end; }
+.spot__stat { font-size: 0.85rem; color: var(--muted); }
+.spot__stat strong { color: var(--fg); }
+.spot__dots { position: relative; display: flex; justify-content: center; gap: 4px; }
+.spot__dot {
+  display: grid;
+  align-items: center;
+  width: 40px;
+  height: 22px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.spot__dot::before, .spot__fill { grid-area: 1 / 1; height: 4px; border-radius: 2px; }
+.spot__dot::before { content: ""; background: color-mix(in srgb, var(--fg) 22%, transparent); }
+.spot__dot:hover::before { background: color-mix(in srgb, var(--fg) 40%, transparent); }
+.spot__fill { background: var(--accent); transform: scaleX(0); transform-origin: left; }
+.spot__dot.is-on .spot__fill { animation: spot-fill 9s linear forwards; }
+@keyframes spot-fill { to { transform: scaleX(1); } }
+@media (hover: hover) {
+  .spot:hover .spot__fill { animation-play-state: paused; }
+}
+.spot:has(:focus-visible) .spot__fill { animation-play-state: paused; }
+.spot__arrow {
+  position: absolute;
+  top: 50%;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  margin-top: -14px;
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--surface) 90%, transparent);
+  color: var(--fg);
+  cursor: pointer;
+}
+.spot__arrow:hover { background: var(--surface); color: var(--accent); border-color: var(--accent); }
+.spot__arrow--prev { left: 12px; }
+.spot__arrow--next { right: 12px; }
+@media (prefers-reduced-motion: reduce) {
+  .spot__dot.is-on .spot__fill { transform: none; }
+}
+@media (max-width: 660px) {
+  .spot { padding: 12px 14px 8px; }
+  .spot__head { flex-wrap: wrap; gap: 2px 14px; }
+  .spot__heading { font-size: 1.15rem; }
+  .spot__slides { margin-inline: 0; }
+  /* Only the title and project sit beside the box art; the rest runs the full width. */
+  .spot__slide { grid-template-columns: 72px minmax(0, 1fr); grid-template-rows: none; column-gap: 14px; row-gap: 8px; }
+  .spot__text { display: contents; }
+  .spot__meta { grid-area: 1 / 1 / 2 / -1; }
+  .spot__cover, .spot__slide > .cover { grid-area: 2 / 1 / 4 / 2; align-self: start; }
+  .spot__cover { max-width: 72px; max-height: 100px; }
+  .spot__slide > .cover { width: 72px; height: 72px; }
+  .spot__title { grid-area: 2 / 2; align-self: end; font-size: 1.45rem; }
+  .spot__sub { grid-area: 3 / 2; align-self: start; }
+  .spot__facts { grid-area: 4 / 1 / 5 / -1; }
+  .spot__summary { grid-area: 5 / 1 / 6 / -1; -webkit-line-clamp: 3; line-clamp: 3; }
+  .spot__foot { grid-area: 6 / 1 / 7 / -1; }
+  .spot__dots { min-height: 40px; align-items: center; }
+  .spot__arrow { top: auto; bottom: 8px; width: 36px; height: 36px; margin-top: 0; }
+  .spot__arrow--prev { left: 10px; }
+  .spot__arrow--next { right: 10px; }
+  .spot__bgs::after {
+    background: color-mix(in srgb, var(--surface) var(--spot-veil-mid), transparent);
+  }
+}
+
 /* Stars gained this week (tools/track_stars.py). */
 .gain { font-family: var(--font-mono); font-size: 0.72rem; font-weight: 600; color: var(--ok); white-space: nowrap; }
 /* Rating trend: the score since the latest release against the one before it. */

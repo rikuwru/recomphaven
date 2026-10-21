@@ -83,12 +83,13 @@ To add or change a game's media:
 
 To try it before pushing, serve the media folder on port 8767 and build with `RH_MEDIA_BASE=http://127.0.0.1:8767/`. The server has to send `Access-Control-Allow-Origin: *`, as GitHub Pages does, or the music button hides itself: `python -m http.server` alone doesn't, so add that header.
 
-## Latest releases and trending
+## Trending, latest releases and newly added
 
-The front page opens with two panels, **Latest releases** and **Trending releases**.
+The front page opens with a wide **Trending releases** box, and under it two panels, **Latest releases** and **Newly added**.
 
+- **Trending releases** shows the top 5 trending projects one at a time, about 9 seconds each, over the game's first backdrop picture (or its box art, blurred). Its arrows and bars move between them by hand, and it pauses while pointed at. It ranks projects by how many people opened them on Recomp Haven in the last 3 days (`visitsWeek`, see "Counting visits" below), recounted by the nightly refresh so it changes every day, and there's a matching "Trending" sort. Until visits are being counted, it ranks by GitHub stars gained in the last 7 days (`starsWeek`) instead.
 - **Latest releases** lists the newest `version` / `versionDate` in the data, so it updates with the nightly refresh on its own. The build also makes a full list at `/releases/` and an RSS feed at `/feed.xml`. The data only keeps each project's latest release, so a project that ships twice in one day shows its newer version.
-- **Trending releases** ranks projects by how many people opened them on Recomp Haven in the last 3 days (`visitsWeek`, see "Counting visits" below), recounted by the nightly refresh so it changes every day, and there's a matching "Trending" sort. Until visits are being counted, it ranks by GitHub stars gained in the last 7 days (`starsWeek`) instead.
+- **Newly added** lists the projects most recently added to the catalogue, by their `added` date (the same day by stars), with the "Recently added" sort and the `/added.xml` feed beside it.
 - **Stars this week** (the green "+N" next to star counts) come from `tools/track_stars.py`, which counts them each night from GitHub's dated star list. It also saves the nightly totals to `data/stars-history.json` (two weeks of them) as a backup in case GitHub won't list the stars.
 
 ### Counting visits
