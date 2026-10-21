@@ -93,6 +93,8 @@ python -m venv .venv && .venv/Scripts/pip install pillow   # first time only
    `started` (repository created), `updated` (last push), `stars`, `features`, `ai` (true when the project says AI
    wrote a substantial part), `summary`, `requires`, `added` (today, YYYY-MM-DD), plus `"inputFrom": "manual"` and
    `"modManagerFrom": "manual"`. `planned` comes from `tools/detect_planned.py --only <id>`.
+   `languages` comes from `tools/detect_languages.py --only <id> --verbose`; check its evidence, and set
+   `"languagesFrom": "manual"` when it's wrong.
 3. Covers: run `tools/fetch_covers.py --only <id>` and look at the image. It sometimes picks the wrong game or
    platform; fix that by setting `coverFrom` to `"libretro:<exact box art name>"` or `"wikipedia:<page title>"`
    and running again with `--force`.

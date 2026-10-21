@@ -58,6 +58,9 @@ jobs:
       - name: Detect the systems projects say are coming next
         run: python tools/detect_planned.py
 
+      - name: Detect the languages each game can be played in
+        run: python tools/detect_languages.py
+
       - name: Detect keyboard/mouse support and mod managers for new entries
         run: python tools/detect_features.py
 
@@ -86,13 +89,13 @@ jobs:
 
       - name: Commit the data and covers if they changed
         run: |
-          if [ -z "$(git status --porcelain -- data/recomps.js data/stars-history.json data/rom-checks.json data/planned-checks.json assets/covers)" ]; then
+          if [ -z "$(git status --porcelain -- data/recomps.js data/stars-history.json data/rom-checks.json data/planned-checks.json data/language-checks.json assets/covers)" ]; then
             echo "Nothing changed."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add data/recomps.js data/stars-history.json data/rom-checks.json data/planned-checks.json assets/covers
+          git add data/recomps.js data/stars-history.json data/rom-checks.json data/planned-checks.json data/language-checks.json assets/covers
           git commit -m "Refresh GitHub stats and covers ($(date -u +%Y-%m-%d))"
           git pull --rebase
           git push

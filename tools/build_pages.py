@@ -77,6 +77,7 @@ with open(os.path.join(ROOT, 'data', 'tables.js'), encoding='utf-8') as _f:
 TABLES = json.loads(_text[_text.index('{', _text.index('RECOMPHAVEN_TABLES')):].rstrip().rstrip(';'))
 CONSOLES, STAGES, TIERS = TABLES['consoles'], TABLES['stages'], TABLES['tiers']
 FEATURES, OS, PLATFORM_SOURCE = TABLES['features'], TABLES['os'], TABLES['platformSource']
+LANGUAGE_SOURCE = TABLES['languageSource']
 STAGE_ORDER, TIER_ORDER = list(STAGES), list(TIERS)
 # Game-page pictures and music (data/media.js), kept in the separate media repository. RH_MEDIA_BASE
 # points the build at another copy, like a local server for media/, for trying changes.
@@ -377,6 +378,12 @@ def card(e, game, rows):
                 cells.append(fact('Runs on', f'<span class="os-chips"{title}>{chips}</span>' + planned_html(e)))
             else:
                 cells.append(fact('Runs on', muted('Not stated by the project') + planned_html(e)))
+        elif row == 'languages':
+            if e.get('languages'):
+                note = LANGUAGE_SOURCE[e.get('languagesFrom') or 'readme']
+                cells.append(fact('Languages', f'<span title="{esc(note)}">{esc(", ".join(e["languages"]))}</span>'))
+            else:
+                cells.append(fact('Languages', muted('Not stated by the project')))
         elif row == 'features':
             feats = ''.join(f'<span class="feat">{esc(FEATURES.get(f, f))}</span>' for f in e.get('features') or [])
             cells.append(fact('Features', f'<div class="feats">{feats}</div>' if feats else muted('None listed')))
@@ -438,7 +445,7 @@ def page(game, share_url, snapshot):
     consoles = [console_of(k) for k in game['consoles']]
 
     rows = ['console'] if len(game['consoles']) > 1 else []
-    rows += ['stage', 'os', 'features', 'release', 'activity', 'score', 'stars', 'toolchain']
+    rows += ['stage', 'os', 'languages', 'features', 'release', 'activity', 'score', 'stars', 'toolchain']
     rows += [r for r in ('summary', 'requires') if any(e.get(r) for e in es)]
 
     if multi:

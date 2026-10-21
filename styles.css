@@ -1145,8 +1145,12 @@ dialog::backdrop { background: var(--backdrop); }
   transition: opacity 1.2s ease, visibility 0s 1.2s;
 }
 .spot__bg.is-on.is-loaded { opacity: 1; visibility: visible; transition: opacity 1.2s ease; }
-/* Box art is small: blown up and blurred a lot, so it reads as colour and shape. */
-.spot__bg--cover { inset: -40px; filter: blur(28px) saturate(1.25); }
+/* A slow drift left and a little zoom while it shows (about 11 seconds, its turn and its fade). */
+.spot__bg.is-drifting { will-change: transform; animation: spot-drift 11s linear forwards; }
+@keyframes spot-drift {
+  from { transform: translateX(2.5%) scale(1.06); }
+  to { transform: translateX(-2.5%) scale(1.13); }
+}
 .spot__head { position: relative; display: flex; align-items: baseline; gap: 14px; }
 .spot__heading {
   display: inline-flex; align-items: center; gap: 8px;

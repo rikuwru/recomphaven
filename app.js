@@ -30,6 +30,7 @@
   const OS = TABLES.os;
   const OS_ORDER = Object.keys(OS);
   const PLATFORM_SOURCE = TABLES.platformSource;
+  const LANGUAGE_SOURCE = TABLES.languageSource;  // where "languages" came from (tools/detect_languages.py)
 
   // Trending ranks by people who opened each project here in the last 3 days (visitsWeek, from
   // tools/track_visits.py). Until there are any, it uses GitHub stars gained this week
@@ -609,13 +610,30 @@
   }
 
   // The top 5 trending projects, across both columns, one at a time: each over its first backdrop
-  // picture (data/media.js, already out of focus), or else its box art blurred. A picture fades in
-  // once it has loaded. The bar under the active game fills over 9 seconds and then the next game
+  // picture (data/media.js, already out of focus), or else its box art blurred, slowly drifting. A
+  // picture fades in once it has loaded. The bar under the active game fills over 9 seconds and then the next game
   // crossfades in; the arrows and bars move by hand. Pointing at the box, or keyboard focus in it,
   // pauses it, and it doesn't move by itself for people who ask for less motion (the bar's
   // animation is off, and its end is what moves it on). With nothing trending the box stays hidden.
   const TRENDING_ICON = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M3 17 9.5 10.5l4 4L21 7M14.5 7H21v6.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
   const chevron = (d) => `<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="${d}" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  // Box art is small and sharp: drawn tiny and scaled back up (blurred too where the browser can),
+  // it turns into soft colour. Done once, so the drift moves a plain picture; a CSS blur would be
+  // redone every frame.
+  function softened(img) {
+    const small = document.createElement('canvas');
+    small.width = 24;
+    small.height = Math.max(1, Math.round(24 * img.naturalHeight / img.naturalWidth));
+    small.getContext('2d').drawImage(img, 0, 0, small.width, small.height);
+    const big = document.createElement('canvas');
+    big.width = 240;
+    big.height = Math.round(240 * small.height / small.width);
+    const ctx = big.getContext('2d');
+    ctx.imageSmoothingQuality = 'high';
+    ctx.filter = 'blur(6px) saturate(1.25)';
+    ctx.drawImage(small, -18, -18, big.width + 36, big.height + 36);  // past the edges, which blur thin
+    return big.toDataURL('image/jpeg', 0.85);
+  }
   function renderSpot() {
     const top = TRENDING.slice(0, 5);
     if (!top.length) return;
@@ -652,7 +670,7 @@
     };
     box.innerHTML = `
       <div class="spot__bgs" aria-hidden="true">${pics.map((p) => (p
-        ? `<div class="spot__bg${p.cover ? ' spot__bg--cover' : ''}" style="background-position:${esc(p.focus)}"></div>` : '<div class="spot__bg"></div>')).join('')}</div>
+        ? `<div class="spot__bg" style="background-position:${esc(p.focus)}"></div>` : '<div class="spot__bg"></div>')).join('')}</div>
       <div class="spot__head">
         <h2 class="spot__heading">${TRENDING_ICON}Trending releases</h2>
         <button type="button" class="pulse__link" data-sort-trending>Sort by trending →</button>
@@ -666,14 +684,22 @@
     const bgs = [...box.querySelectorAll('.spot__bg')];
     const slides = [...box.querySelectorAll('.spot__slide')];
     const dots = [...box.querySelectorAll('.spot__dot')];
+    // Each picture drifts left and zooms in a little while it shows, and keeps going as it fades
+    // out, then rests hidden.
+    const drift = (el) => {
+      el.classList.remove('is-drifting');
+      void el.offsetWidth;  // starts the drift over
+      el.classList.add('is-drifting');
+    };
     const load = (i) => {
       const p = pics[i];
       if (!p || bgs[i].dataset.loading) return;
       bgs[i].dataset.loading = '1';
       const img = new Image();
       img.onload = () => {
-        bgs[i].style.backgroundImage = `url("${p.url}")`;
+        bgs[i].style.backgroundImage = `url("${p.cover ? softened(img) : p.url}")`;
         bgs[i].classList.add('is-loaded');
+        if (i === at) drift(bgs[i]);  // it was waiting to load: drift from the start
       };
       img.src = p.url;
     };
@@ -681,8 +707,11 @@
     const show = (i) => {
       i = (i + top.length) % top.length;
       if (i === at) return;
+      const out = bgs[at];
+      if (out) setTimeout(() => { if (!out.classList.contains('is-on')) out.classList.remove('is-drifting'); }, 1300);
       at = i;
       [bgs, slides].forEach((set) => set.forEach((el, k) => el.classList.toggle('is-on', k === i)));
+      drift(bgs[i]);
       dots.forEach((d, k) => {
         d.classList.remove('is-on');
         d.toggleAttribute('aria-current', k === i);
@@ -783,6 +812,9 @@
             PLATFORM_SOURCE[e.platformsFrom] ? `<span class="small muted os-note">${PLATFORM_SOURCE[e.platformsFrom]}</span>` : ''}`
           : '<span class="muted">Not stated by the project</span>'}</dd></div>
         ${(e.planned || []).length ? `<div class="fact--wide"><dt>Planned for</dt><dd><span class="os-chips">${e.planned.map((k) => `<span class="os-chip os-chip--planned">${osIcon(k)}${OS[k].label}</span>`).join('')}</span><span class="small muted os-note">What the project says is coming next</span></dd></div>` : ''}
+        <div class="fact--wide"><dt>Languages</dt><dd>${(e.languages || []).length
+          ? `${esc(e.languages.join(', '))}<span class="small muted os-note">${esc(LANGUAGE_SOURCE[e.languagesFrom || 'readme'])}</span>`
+          : '<span class="muted">Not stated by the project</span>'}</dd></div>
         ${fact('Latest release', e.version || e.versionDate ? `<span class="mono">${esc(e.version || 'Release')}</span>${e.versionDate ? `<br><span class="small muted">${esc(fmtDate(e.versionDate))}</span>` : ''}` : '<span class="muted">No release yet</span>')}
         ${fact('Last activity', `${actTag(e)}${e.updated ? `<br><span class="small muted">${esc(fmtDate(e.updated))}</span>` : ''}`)}
         ${fact('User score', e.userScore != null

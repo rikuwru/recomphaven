@@ -244,5 +244,9 @@ window.RECOMPHAVEN_TABLES = {
   "release": "Downloads on its latest GitHub release",
   "readme": "Going by the project's README",
   "manual": "Checked by hand"
+ },
+ "languageSource": {
+  "readme": "Going by the project's README and the game versions it plays",
+  "manual": "Checked by hand"
  }
 };
