@@ -379,11 +379,10 @@ def card(e, game, rows):
             else:
                 cells.append(fact('Runs on', muted('Not stated by the project') + planned_html(e)))
         elif row == 'languages':
-            if e.get('languages'):
-                note = LANGUAGE_SOURCE[e.get('languagesFrom') or 'readme']
-                cells.append(fact('Languages', f'<span title="{esc(note)}">{esc(", ".join(e["languages"]))}</span>'))
-            else:
-                cells.append(fact('Languages', muted('Not stated by the project')))
+            # A project that doesn't name its languages is taken to be in English.
+            langs = e.get('languages') or ['English']
+            note = LANGUAGE_SOURCE[(e.get('languagesFrom') or 'readme') if e.get('languages') else 'assumed']
+            cells.append(fact('Languages', f'<span title="{esc(note)}">{esc(", ".join(langs))}</span>'))
         elif row == 'features':
             feats = ''.join(f'<span class="feat">{esc(FEATURES.get(f, f))}</span>' for f in e.get('features') or [])
             cells.append(fact('Features', f'<div class="feats">{feats}</div>' if feats else muted('None listed')))

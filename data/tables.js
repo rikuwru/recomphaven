@@ -247,6 +247,7 @@ window.RECOMPHAVEN_TABLES = {
  },
  "languageSource": {
   "readme": "Going by the project's README and the game versions it plays",
-  "manual": "Checked by hand"
+  "manual": "Checked by hand",
+  "assumed": "Assumed: the project doesn't say"
  }
 };

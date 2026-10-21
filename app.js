@@ -31,6 +31,9 @@
   const OS_ORDER = Object.keys(OS);
   const PLATFORM_SOURCE = TABLES.platformSource;
   const LANGUAGE_SOURCE = TABLES.languageSource;  // where "languages" came from (tools/detect_languages.py)
+  // A project that doesn't name its languages is taken to be in English.
+  const languagesOf = (e) => ((e.languages || []).length ? e.languages : ['English']);
+  const languageSourceOf = (e) => ((e.languages || []).length ? e.languagesFrom || 'readme' : 'assumed');
 
   // Trending ranks by people who opened each project here in the last 3 days (visitsWeek, from
   // tools/track_visits.py). Until there are any, it uses GitHub stars gained this week
@@ -812,9 +815,8 @@
             PLATFORM_SOURCE[e.platformsFrom] ? `<span class="small muted os-note">${PLATFORM_SOURCE[e.platformsFrom]}</span>` : ''}`
           : '<span class="muted">Not stated by the project</span>'}</dd></div>
         ${(e.planned || []).length ? `<div class="fact--wide"><dt>Planned for</dt><dd><span class="os-chips">${e.planned.map((k) => `<span class="os-chip os-chip--planned">${osIcon(k)}${OS[k].label}</span>`).join('')}</span><span class="small muted os-note">What the project says is coming next</span></dd></div>` : ''}
-        <div class="fact--wide"><dt>Languages</dt><dd>${(e.languages || []).length
-          ? `${esc(e.languages.join(', '))}<span class="small muted os-note">${esc(LANGUAGE_SOURCE[e.languagesFrom || 'readme'])}</span>`
-          : '<span class="muted">Not stated by the project</span>'}</dd></div>
+        <div class="fact--wide"><dt>Languages</dt><dd>${esc(languagesOf(e).join(', '))}<span class="small muted os-note">${
+          esc(LANGUAGE_SOURCE[languageSourceOf(e)])}</span></dd></div>
         ${fact('Latest release', e.version || e.versionDate ? `<span class="mono">${esc(e.version || 'Release')}</span>${e.versionDate ? `<br><span class="small muted">${esc(fmtDate(e.versionDate))}</span>` : ''}` : '<span class="muted">No release yet</span>')}
         ${fact('Last activity', `${actTag(e)}${e.updated ? `<br><span class="small muted">${esc(fmtDate(e.updated))}</span>` : ''}`)}
         ${fact('User score', e.userScore != null
