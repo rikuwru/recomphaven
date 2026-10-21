@@ -66,6 +66,12 @@ def load(path):
     return text, m['head'], json.loads(m['meta']), entries
 
 
+def listed(entries):
+    """The entries the site shows: not the ones hidden for handing out game files (romFiles, set by
+    tools/check_roms.py)."""
+    return [e for e in entries if not e.get('romFiles')]
+
+
 def dump(head, meta, entries):
     entries = sorted(entries, key=lambda e: (e['title'].lower(), e['id']))
     rows = ',\n'.join('  ' + json.dumps(e, ensure_ascii=False) for e in entries)

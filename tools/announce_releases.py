@@ -26,7 +26,7 @@ import urllib.request
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pages import CONSOLES, SITE, STAGES, TIER_COLORS, TIERS, slug_of  # noqa: E402
-from refresh_stats import DATA, ROOT, load  # noqa: E402
+from refresh_stats import DATA, ROOT, listed, load  # noqa: E402
 
 RECENT_DAYS = 3  # older releases that turn up late (a fixed repo link, say) aren't news
 EMBEDS_PER_MESSAGE = 10  # Discord's limit
@@ -84,7 +84,7 @@ def main():
     sys.stdout.reconfigure(errors='replace')
 
     old = committed_entries()
-    _, _, _, entries = load(DATA)
+    entries = listed(load(DATA)[3])
     since = (dt.datetime.now(dt.timezone.utc).date() - dt.timedelta(days=RECENT_DAYS)).isoformat()
     new = [e for e in entries
            if e['id'] in old and e.get('version') and (e.get('versionDate') or '') >= since

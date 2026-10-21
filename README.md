@@ -150,6 +150,12 @@ The workflow in `.github/workflows/refresh-data.yml` runs the script every night
 
 Genres, stages and quality tiers stay manual, and the script never touches them. When GitHub hints that a stage is out of date (an archived repo, a stable 1.0 release, no push in a year), it lists the entry under "Suggested review", which also appears in the workflow's job summary. Moved repos and 404s are listed too, and nothing is deleted.
 
+### Projects that hand out game files
+
+Every night `tools/check_roms.py` looks through each project's repository and the downloads of its latest release for the game itself: ROMs and disc images in the formats of the game's own console (a `.z64` for an N64 game, an `.iso` for a disc console), and that console's game programs (an Xbox 360 `default.xex`, a PS2 `SLUS_123.45`). A project with any is hidden from the list, its game page, the feed, Discord and the emails, and `romFiles` in `data/recomps.js` says what was found. Once a later check finds nothing, it's back on the site by itself. The job summary lists what was hidden or shown again.
+
+It skips what isn't the game: other consoles' formats (a 3DS build of a PC game's port, Game Boy test ROMs bundled with an emulator), files in test, sample and vendored-library folders, and files under 16 KB. It only reads repositories that were pushed to since the last check (`data/rom-checks.json` keeps track) and uses no GitHub API calls. It can't look inside zip archives. If it ever flags something that isn't the game, add `"<entry id>:<path>"` to `ALLOW` in the script.
+
 ## Covers
 
 Each game's box art is in `assets/covers/<id>.webp`. The entry's `cover` field points at it, and `coverFrom` says where it came from. To fetch covers for entries that don't have one yet:

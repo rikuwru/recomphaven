@@ -69,8 +69,9 @@ recomp.fyi and the Quiver Launcher catalog, which were used to find projects.
 - `tools/build_pages.py` builds `_site/`: the site plus one page per game (projects with the same `title` share a
   game page, so titles must match exactly), share images, the releases page, the feed and the sitemap. The deploy
   workflow runs it; you run it to check your work.
-- Nightly (`refresh-data.yml`): stars, last push and versions (`refresh_stats.py`), covers, platforms, features,
-  star history, visits, ratings, and release announcements.
+- Nightly (`refresh-data.yml`): stars, last push and versions (`refresh_stats.py`), the game-files check
+  (`check_roms.py`, which hides projects that hand out ROMs via `romFiles` until they stop), covers, platforms,
+  features, star history, visits, ratings, and release announcements. Don't clear `romFiles` by hand.
 
 Use the repo's virtual environment (it has Pillow). On Windows, set `PYTHONIOENCODING=utf-8`, or Python crashes
 printing emoji and accented names.

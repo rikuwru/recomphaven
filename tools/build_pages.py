@@ -44,7 +44,7 @@ from urllib.parse import quote, urlencode
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from refresh_stats import DATA, ROOT, load  # noqa: E402
+from refresh_stats import DATA, ROOT, listed, load  # noqa: E402
 
 SITE = 'https://recomphaven.com'
 # giscus (https://giscus.app): ratings and comments on game pages, kept as GitHub Discussions in
@@ -1012,6 +1012,7 @@ def main():
         sys.exit(f'refusing to build into {out}: it would delete the repo')
 
     _, _, meta, entries = load(DATA)
+    entries = listed(entries)
     # Pages and cards name every project; fall back to the repo's name, then the game's.
     entries = [dict(e, project=e.get('project') or (e.get('repo') or '').rstrip('/').rsplit('/', 1)[-1] or e['title'])
                for e in entries]

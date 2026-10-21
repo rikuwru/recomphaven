@@ -1,7 +1,8 @@
 (() => {
   'use strict';
 
-  const DATA = Array.isArray(window.RECOMPS) ? window.RECOMPS : [];
+  // Projects whose repository hands out game files (romFiles, tools/check_roms.py) stay hidden.
+  const DATA = (Array.isArray(window.RECOMPS) ? window.RECOMPS : []).filter((e) => !e.romFiles);
   const META = window.RECOMPHAVEN_META || {};
   const DAY = 864e5;
 

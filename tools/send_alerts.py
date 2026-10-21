@@ -22,7 +22,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from mail_api import (MailAPI, button, email_html, email_text, esc, facts, fmt_date, game_url,  # noqa: E402
                       item_row)
-from refresh_stats import DATA, REPO_RE, FetchError, GitHub, latest_release, load  # noqa: E402
+from refresh_stats import DATA, REPO_RE, FetchError, GitHub, latest_release, listed, load  # noqa: E402
 
 
 def build(e, rel):
@@ -60,7 +60,7 @@ def main():
     followed = stats.get('followed') or []
     print(f'{len(followed)} followed projects; {stats.get("sentToday", 0)} of {stats.get("dailyLimit")} emails sent today.')
 
-    by_id = {e['id']: e for e in load(DATA)[3]}
+    by_id = {e['id']: e for e in listed(load(DATA)[3])}
     gh = GitHub(os.environ.get('GITHUB_TOKEN', '').strip())
     alerts = emails = 0
     for f in followed:

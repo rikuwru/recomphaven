@@ -24,7 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from build_pages import release_url  # noqa: E402
 from mail_api import (SITE, MailAPI, button, email_html, email_text, esc, facts, fmt_date, game_url,  # noqa: E402
                       item_row)
-from refresh_stats import DATA, ROOT, load  # noqa: E402
+from refresh_stats import DATA, ROOT, listed, load  # noqa: E402
 
 DAYS = 7
 MAX_ITEMS = 40  # per section; the rest are a link away on the releases page
@@ -124,7 +124,7 @@ def main():
 
     end = dt.datetime.now(dt.timezone.utc).date()
     start = end - dt.timedelta(days=args.days)
-    _, _, _, entries = load(DATA)
+    entries = listed(load(DATA)[3])
     old = entries_at(args.days)
     if old is None:
         print('No data from a week ago in git history (the repo is newer, or the checkout is shallow), '
