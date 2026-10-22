@@ -50,5 +50,8 @@ window.RECOMPHAVEN_CREDITS = [
   {"name": "lotushomerun", "site": "github", "for": "Submitted Forza Motorsport 2 ReGPU"},
   {"name": "NeminiNomen", "site": "github", "for": "Suggested \"Planned for\" platforms, the \"Recently added\" sort and its RSS feed"},
   {"name": "EuclidVsGauss", "site": "github", "for": "Submitted Hazard: Revenge, the Hazard decompilation"},
-  {"name": "phobos665", "site": "github", "for": "Updated the TimeSplitters 2 listing"}
+  {"name": "phobos665", "site": "github", "for": "Updated the TimeSplitters 2 listing"},
+  {"name": "YanagiT720", "site": "github", "for": "Submitted the Folklore recomp"},
+  {"name": "caradegian", "site": "github", "for": "Submitted the Midnight Club: Los Angeles recomp"},
+  {"name": "lukellorente", "site": "github", "for": "Submitted SMM2 Recomp, the Super Mario Maker 2 recomp"}
 ];
