@@ -22,7 +22,7 @@ window.RECOMPHAVEN_CREDITS = [
   {"name": "boomersky", "site": "reddit", "for": "Suggested adding Nintendo Switch projects"},
   {"name": "mereshadows", "site": "reddit", "for": "Suggested a weekly newsletter of the latest recomps"},
   {"name": "tholurossleuth", "site": "reddit", "for": "Suggested showing only the systems a recomp runs on"},
-  {"name": "TheGh0stShip", "site": "github", "for": "Submitted the BattleTanx and BattleTanx: Global Assault decompilations, disassembly and PC port"},
+  {"name": "TheGh0stShip", "site": "github", "for": "Submitted the BattleTanx and BattleTanx: Global Assault decompilations, disassembly and PC port, and the Madden Football 64 decompilation"},
   {"name": "jcsix694", "site": "github", "for": "Submitted Def Jam Vendetta"},
   {"name": "crazyriddler", "site": "github", "for": "Submitted Call of Duty: Finest Hour Remastered"},
   {"name": "GurekamDhillon", "site": "github", "for": "Submitted GD's Melee"},

@@ -14,14 +14,16 @@ body:
         - **PS4 and PS5 "PC ports"** such as Bloodborne PC, inFAMOUS Second Son and Shadow of the Colossus (PS4). Those consoles already run x86-64 code, so these projects run the game's original code through a compatibility layer, much like an emulator: nothing is recompiled.
         - **Emulators**, and ports or launchers built on an emulator.
         - **Source ports** of games whose source code was released or leaked, such as dhewm3 for Doom 3.
-        - **Remakes and engine reimplementations** that rewrite a game instead of translating or decompiling it.
+        - **Remakes** that rebuild a game from scratch instead of translating or decompiling it.
+
+        Hand-made ports that reimplement a game's engine, like the P.T. PC port, are the exception: they can be listed.
 
   - type: checkboxes
     id: true-recomp
     attributes:
       label: Is it a true recomp or decomp?
       options:
-        - label: It translates or decompiles the game's own code. It isn't a PS4 or PS5 compatibility-layer port, an emulator, a source port or a remake.
+        - label: It translates, decompiles or reimplements the game's own code. It isn't a PS4 or PS5 compatibility-layer port, an emulator, a source port or a remake.
           required: true
 
   - type: dropdown
