@@ -53,5 +53,7 @@ window.RECOMPHAVEN_CREDITS = [
   {"name": "phobos665", "site": "github", "for": "Updated the TimeSplitters 2 listing"},
   {"name": "YanagiT720", "site": "github", "for": "Submitted the Folklore recomp"},
   {"name": "caradegian", "site": "github", "for": "Submitted the Midnight Club: Los Angeles recomp"},
-  {"name": "lukellorente", "site": "github", "for": "Submitted SMM2 Recomp, the Super Mario Maker 2 recomp"}
+  {"name": "lukellorente", "site": "github", "for": "Submitted SMM2 Recomp, the Super Mario Maker 2 recomp"},
+  {"name": "lElvyy", "site": "github", "for": "Submitted Saints Reborn, Ninja Gaiden Black Recompiled and Amped2-Recomp"},
+  {"name": "enrique363", "site": "github", "for": "Submitted Voldorium, the SoulCalibur recomp"}
 ];
